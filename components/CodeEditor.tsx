@@ -38,7 +38,12 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
                 onChange={onChange}
                 onMount={handleEditorDidMount}
                 options={{
-                    minimap: { enabled: false },
+                    minimap: {
+                        enabled: true,
+                        scale: 0.75,
+                        renderCharacters: false,
+                        showSlider: "mouseover"
+                    },
                     fontSize: 14,
                     fontFamily: "var(--font-code)",
                     lineHeight: 24,
@@ -50,8 +55,9 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
                     formatOnPaste: true,
                     renderLineHighlight: "all",
                     scrollbar: {
-                        verticalScrollbarSize: 10,
-                        horizontalScrollbarSize: 10,
+                        verticalScrollbarSize: 4,
+                        horizontalScrollbarSize: 4,
+                        useShadows: false
                     }
                 }}
             />

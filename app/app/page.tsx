@@ -498,23 +498,46 @@ export default function AppLayout() {
               {/* LEFT SECTION: Editor Layout */}
               <div className="flex flex-col h-full bg-[#0e0e10] relative min-w-0">
                 {/* Editor Tab Bar */}
-                <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#141416] shrink-0 sticky top-0 z-10 w-full pr-4">
-                  <div className="flex h-10 shrink-0 overflow-x-auto custom-scrollbar flex-1 min-w-0">
+                <div className="flex items-center justify-between border-b border-[#1e1e24] bg-[#141416] shrink-0 sticky top-0 z-10 w-full pr-4 h-12">
+                  <div className="flex shrink-0 overflow-x-auto text-sm custom-scrollbar h-full flex-1 min-w-0">
                     {tabs.map((tab) => (
                       <div
                         key={tab.id}
                         onClick={() => setActiveTabId(tab.id)}
-                        className={`flex items-center gap-2 px-4 border-r border-white/[0.06] min-w-[120px] max-w-[200px] cursor-pointer group transition-colors relative ${activeTabId === tab.id
-                          ? 'bg-[#1e1e24] text-white'
+                        className={`flex items-center gap-2 px-4 h-full border-r border-[#1e1e24] min-w-[140px] max-w-[220px] cursor-pointer group transition-colors relative ${activeTabId === tab.id
+                          ? 'bg-[#0e0e10] text-zinc-100'
                           : 'text-zinc-500 hover:bg-[#1a1a1e] hover:text-zinc-300'
                           }`}
                       >
                         {tab.id === activeTabId && <div className="absolute top-0 left-0 w-full h-[2px] bg-blue-500" />}
-                        <div className={`w-2 h-2 rounded-full ${LANGUAGE_COLORS[tab.language] || "bg-zinc-500"}`} />
-                        <span>{tab.filename}</span>
+                        <div className="flex items-center gap-2 w-full overflow-hidden">
+                          {(() => {
+                            const name = tab.filename.toLowerCase();
+                            if (name.endsWith('.tsx') || name.endsWith('.jsx')) {
+                              return <svg className="w-4 h-4 text-[#61dafb] shrink-0" viewBox="0 0 114 114" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M57 91.9C37.07 91.9 20 84.15 20 74.45C20 64.75 37.07 57 57 57C76.93 57 94 64.75 94 74.45C94 84.15 76.93 91.9 57 91.9ZM57 61.2C40.4 61.2 26.6 67.2 26.6 74.45C26.6 81.7 40.4 87.7 57 87.7C73.6 87.7 87.4 81.7 87.4 74.45C87.4 67.2 73.6 61.2 57 61.2Z" fill="currentColor" /><path d="M39.55 101.9C29.6 84.6 33.7 65.4 48.7 56.65C63.7 47.9 83.95 52.8 93.9 70.1C103.85 87.4 99.75 106.6 84.75 115.35C69.75 124.1 49.5 119.2 39.55 101.9ZM87.85 73.65C79.8 60 63.6 56.1 52.1 62.8C40.6 69.5 37.3 84.2 45.35 97.85C53.4 111.5 69.6 115.4 81.1 108.7C92.6 102 95.9 87.3 87.85 73.65Z" fill="currentColor" /><path d="M74.45 101.9C84.4 84.6 80.3 65.4 65.3 56.65C50.3 47.9 30.05 52.8 20.1 70.1C10.15 87.4 14.25 106.6 29.25 115.35C44.25 124.1 64.5 119.2 74.45 101.9ZM26.15 73.65C34.2 60 50.4 56.1 61.9 62.8C73.4 69.5 76.7 84.2 68.65 97.85C60.6 111.5 44.4 115.4 32.9 108.7C21.4 102 18.1 87.3 26.15 73.65Z" fill="currentColor" /><circle cx="57" cy="74.45" r="7.4" fill="currentColor" /></svg>;
+                            } else if (name.endsWith('.ts')) {
+                              return <svg className="w-4 h-4 text-[#3178c6] shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="currentColor" /><path d="M12.9231 15.6562H9V27H12.9231V18.7344H14.8906V15.6562H12.9231ZM27 21.0938C27 18.4688 24.2769 17.5 22.1846 16.9219C20.6462 16.5156 19.8923 16.2031 19.8923 15.4688C19.8923 14.8125 20.3692 14.4062 21.3692 14.4062C22.2154 14.4062 23.3385 14.8125 23.8308 15.9062L26.4769 14.3438C25.4308 12.0625 23.5077 11.25 21.4308 11.25C18.6769 11.25 16.1231 12.8125 16.1231 15.75C16.1231 18.7188 19.1692 19.5 21.1692 20.0625C22.6923 20.4844 23.2308 20.9375 23.2308 21.75C23.2308 22.4063 22.6154 22.9531 21.4154 22.9531C20.4923 22.9531 19.1692 22.2969 18.5385 20.9219L15.6308 22.5625C16.6308 24.9688 19.0615 26.25 21.5077 26.25C24.3692 26.25 27 24.5781 27 21.0938Z" fill="white" /></svg>;
+                            } else if (name.endsWith('.js') || name.endsWith('.mjs')) {
+                              return <svg className="w-4 h-4 text-[#f7df1e] shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="currentColor" /><path d="M12.9231 15.6562H9V23.75C9 25.1094 9.93846 26.25 11.4462 26.25C12.8308 26.25 13.9846 25.1719 14.1231 23.8281L11.3385 23.4688C11.2615 24 10.9538 24.25 10.4923 24.25C10.0154 24.25 9.8 24 9.8 23.25V15.6562H12.9231ZM27 21.0938C27 18.4688 24.2769 17.5 22.1846 16.9219C20.6462 16.5156 19.8923 16.2031 19.8923 15.4688C19.8923 14.8125 20.3692 14.4062 21.3692 14.4062C22.2154 14.4062 23.3385 14.8125 23.8308 15.9062L26.4769 14.3438C25.4308 12.0625 23.5077 11.25 21.4308 11.25C18.6769 11.25 16.1231 12.8125 16.1231 15.75C16.1231 18.7188 19.1692 19.5 21.1692 20.0625C22.6923 20.4844 23.2308 20.9375 23.2308 21.75C23.2308 22.4063 22.6154 22.9531 21.4154 22.9531C20.4923 22.9531 19.1692 22.2969 18.5385 20.9219L15.6308 22.5625C16.6308 24.9688 19.0615 26.25 21.5077 26.25C24.3692 26.25 27 24.5781 27 21.0938Z" fill="black" /></svg>;
+                            } else if (name.endsWith('.json')) {
+                              return <svg className="w-4 h-4 text-[#cbcb41]" fill="currentColor" viewBox="0 0 24 24"><path d="M5.5 12c0-1.5-1-2-2-2H3v-2h.5c1 0 2-.5 2-2V4h2v2c0 2 1.5 2.5 2.5 2.5H11v2h-1c-1 0-2.5.5-2.5 2.5s1.5 2.5 2.5 2.5h1v2h-1c-1 0-2.5.5-2.5 2.5V20h-2v-2c0-1.5-1-2-2-2H3v-2h.5c1 0 2-.5 2-2zm13 0c0-1.5 1-2 2-2h.5v-2H21c-1 0-2-.5-2-2V4h-2v2c0 2-1.5 2.5-2.5 2.5H13v2h1c1 0 2.5.5 2.5 2.5s-1.5 2.5-2.5 2.5h-1v2h1c1 0 2.5.5 2.5 2.5V20h2v-2c0-1.5 1-2 2-2h.5v-2H21c-1 0-2-.5-2-2z" /></svg>;
+                            } else if (name.endsWith('.css')) {
+                              return <svg className="w-4 h-4 text-[#264de4]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
+                            } else if (name.endsWith('.ico') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.svg')) {
+                              return <svg className="w-4 h-4 text-[#a074c4]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+                            } else if (name.endsWith('.html')) {
+                              return <svg className="w-4 h-4 text-[#e34f26]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
+                            } else if (name.includes('.config') || name.endsWith('.mjs') || name.endsWith('.cjs') || name.startsWith('.env') || name === '.gitignore' || name === 'package.json') {
+                              return <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+                            }
+                            // Generic File
+                            return <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
+                          })()}
+                          <span className="truncate SelectNone text-[13px] pt-px">{tab.filename}</span>
+                        </div>
                         <button
                           onClick={(e) => handleCloseTab(e, tab.id)}
-                          className={`ml-1 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/10 p-0.5 transition-opacity ${tab.id === activeTabId ? 'opacity-100' : ''}`}
+                          className={`ml-auto shrink-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/10 p-1 transition-opacity ${tab.id === activeTabId ? 'opacity-100' : ''}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
