@@ -419,17 +419,44 @@ export default function AppLayout() {
       }
 
       const result = await analyzeCode(codeContext, userMessage, { analysis, execution: lastExecution });
-      if (result.chat_response) {
-        setMessages((prev) => [...prev, { id: Date.now().toString(), role: "agent", content: result.chat_response }]);
+      const hasChanges = result.changes && result.changes.length > 0;
+
+      if (result.planDocument) {
+        const newId = "plan-" + Date.now().toString();
+        const planNode: FileNode = {
+          id: newId,
+          name: result.planDocument.filename || "improvement_plan.md",
+          type: "file",
+          language: "markdown",
+          content: result.planDocument.content
+        };
+        setFiles(prev => addNodeToTree(prev, null, planNode));
+        setTabs(prev => [...prev, { id: newId, filename: planNode.name, language: "markdown", code: planNode.content! }]);
+        setActiveTabId(newId);
       }
-      if (result.changes && result.changes.length > 0) {
-        applyInlineRedGreenDiff(result.changes);
+
+      if (result.chat_response || hasChanges) {
+        setMessages((prev) => [...prev, {
+          id: Date.now().toString(),
+          role: "agent",
+          content: result.chat_response || "I have prepared an improvement plan document.",
+          changes: hasChanges ? result.changes : undefined
+        }]);
       }
     } catch {
       setMessages((prev) => [...prev, { id: Date.now().toString(), role: "agent", content: "Error connecting to AI." }]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAcceptChanges = (messageId: string, changes: any[]) => {
+    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isAccepted: true } : msg));
+    applyInlineRedGreenDiff(changes);
+  };
+
+  const handleRejectChanges = (messageId: string) => {
+    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isRejected: true } : msg));
   };
 
   const applyInlineRedGreenDiff = (changes: any[]) => {
@@ -597,9 +624,27 @@ export default function AppLayout() {
                         <button onClick={acceptAllEdits} className="px-3 py-1 text-xs bg-green-500/10 text-green-500 border border-green-500/30 rounded shadow-sm hover:bg-green-500 hover:text-white transition-all font-bold">Accept Fixes</button>
                       </div>
                     )}
-                    <button onClick={handleDownload} title="Download File" className="p-1.5 text-zinc-400 hover:bg-white/10 rounded transition-colors" disabled={!activeTab}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" /></svg>
+
+                    <button onClick={() => {
+                      if (!activeTab) return;
+                      // Update virtual file system
+                      setFiles(prev => {
+                        const updateNode = (nodes: FileNode[]): FileNode[] => {
+                          return nodes.map(node => {
+                            if (node.id === activeTab.id) return { ...node, content: activeTab.code };
+                            if (node.children) return { ...node, children: updateNode(node.children) };
+                            return node;
+                          });
+                        };
+                        return updateNode(prev);
+                      });
+                      // Trigger download
+                      handleDownload();
+                    }} disabled={!activeTab} className="px-3 py-1 text-xs bg-zinc-800 text-zinc-300 border border-white/10 rounded shadow-sm hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                      Save & Download
                     </button>
+
                     <div className="relative" ref={uploadMenuRef}>
                       <button
                         onClick={() => setIsUploadMenuOpen(!isUploadMenuOpen)}
@@ -742,7 +787,7 @@ export default function AppLayout() {
         <Panel defaultSize={30} minSize={20} maxSize={50}>
           {/* RIGHT SECTION: Chatbot (CodeRefine Agent) */}
           <div className="h-full flex flex-col bg-[#0e0e10]">
-            <ChatPanel messages={messages} input={input} setInput={setInput} onSubmit={handleChatSubmit} isLoading={isLoading} />
+            <ChatPanel messages={messages} input={input} setInput={setInput} onSubmit={handleChatSubmit} isLoading={isLoading} onAcceptChanges={handleAcceptChanges} onRejectChanges={handleRejectChanges} />
           </div>
         </Panel>
       </PanelGroup >
