@@ -72,28 +72,26 @@ export default function Sidebar({ explorerOpen = false, onToggleExplorer }: Side
   ];
 
   return (
-    <div className="w-14 flex-shrink-0 bg-[#0e0e10] border-r border-white/[0.06] h-screen flex flex-col relative z-20 items-center py-3">
+    <div className="w-14 flex-shrink-0 bg-[#000000] border-r border-[rgba(0,229,255,0.1)] h-screen flex flex-col relative z-20 items-center py-3">
       {/* Brand Icon (Top) */}
-      <Link href="/" className="mb-6 group relative w-10 h-10 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.3)] group-hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all">
-          <div className="w-full h-full bg-black/40 rounded-lg relative backdrop-blur-sm flex items-center justify-center">
-            <span className="text-[10px] font-black tracking-tighter text-white">CR</span>
-          </div>
+      <Link href="/" className="mb-8 group relative w-10 h-10 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full gradient-sphere flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.4)] group-hover:shadow-[0_0_20px_rgba(0,229,255,0.6)] transition-all">
+          <div className="w-2 h-2 bg-white rounded-full shadow-[0_0_8px_white]" />
         </div>
       </Link>
 
       {/* Navigation Icons */}
-      <nav className="flex-1 flex flex-col gap-2 w-full items-center">
+      <nav className="flex-1 flex flex-col gap-3 w-full items-center">
         {navItems.map((item) => {
           const content = (
-            <div className={`relative flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 group ${item.isActive ? "text-white" : "text-zinc-500 hover:text-zinc-300"}`}>
+            <div className={`relative flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 group ${item.isActive ? "text-[#00E5FF]" : "text-[#4d6b5a] hover:text-[#00C853]"}`}>
               {item.isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-[#00E5FF] to-[#00C853] rounded-r-full shadow-[0_0_15px_rgba(0,229,255,0.5)]" />
               )}
               {item.icon}
 
               {/* Tooltip */}
-              <div className="absolute left-14 bg-[#1a1a1e] text-white text-xs font-medium px-2 py-1 rounded border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+              <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
                 {item.name}
               </div>
             </div>
@@ -101,14 +99,14 @@ export default function Sidebar({ explorerOpen = false, onToggleExplorer }: Side
 
           if (item.onClick) {
             return (
-              <button key={item.name} onClick={item.onClick} className="focus:outline-none">
+              <button key={item.name} onClick={item.onClick} className="focus:outline-none w-full flex justify-center">
                 {content}
               </button>
             );
           }
 
           return (
-            <Link key={item.path} href={item.path}>
+            <Link key={item.path} href={item.path} className="w-full flex justify-center">
               {content}
             </Link>
           );
@@ -116,25 +114,25 @@ export default function Sidebar({ explorerOpen = false, onToggleExplorer }: Side
       </nav>
 
       {/* Settings Gear & Theme Toggle (Bottom) */}
-      <div className="mt-auto w-full flex flex-col items-center gap-2 pb-2">
+      <div className="mt-auto w-full flex flex-col items-center gap-3 pb-2">
         {mounted && (
           <button
             onClick={handleThemeToggle}
-            className="relative flex items-center justify-center w-12 h-12 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors group outline-none"
+            className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4d6b5a] hover:text-[#00C853] hover:bg-[rgba(0,200,83,0.05)] transition-colors group outline-none"
             aria-label="Toggle Theme"
           >
-            {theme === "dark" ? <Sun size={24} weight="duotone" /> : <Moon size={24} weight="duotone" />}
+            {theme === "dark" ? <Sun size={20} className="w-5 h-5" /> : <Moon size={20} className="w-5 h-5" />}
             {/* Tooltip */}
-            <div className="absolute left-14 bg-[#1a1a1e] text-white text-xs font-medium px-2 py-1 rounded border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+            <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
               Toggle Theme
             </div>
           </button>
         )}
 
-        <button className="relative flex items-center justify-center w-12 h-12 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors group">
+        <button className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4d6b5a] hover:text-[#00C853] hover:bg-[rgba(0,200,83,0.05)] transition-colors group">
           <Settings className="w-5 h-5" />
           {/* Tooltip */}
-          <div className="absolute left-14 bg-[#1a1a1e] text-white text-xs font-medium px-2 py-1 rounded border border-white/10 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+          <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
             Settings
           </div>
         </button>

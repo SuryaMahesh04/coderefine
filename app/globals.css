@@ -26,9 +26,9 @@
 }
 
 :root {
-  /* Light Mode Palette */
+  /* Light Mode Palette (not used in design, keeping safe baseline) */
   --background: #f8fafc;
-  --foreground: #0f172a;
+  --foreground: #050507;
 
   --surface: #ffffff;
   --surface-muted: #f1f5f9;
@@ -36,15 +36,17 @@
 
   --border: #e2e8f0;
 
-  --text-primary: #0f172a;
+  --text-primary: #050507;
   --text-secondary: #475569;
   --text-muted: #64748b;
 
-  --primary: #008736;
-  --accent: #1C64F2;
+  --primary: #00C853;
+  --accent: #39FF7F;
   --highlight: #f59e0b;
 
   --radius: 0.75rem;
+
+  --font-display: var(--font-display, var(--font-sans));
 }
 
 @layer base {
@@ -60,7 +62,7 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-sans);
+    font-family: "Bw Gradual", var(--font-sans), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -68,26 +70,65 @@
   * {
     border-color: var(--border);
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-display {
+    font-family: "Bw Gradual", var(--font-display), sans-serif;
+  }
 }
 
 .dark {
-  /* Dark Mode Palette based on current CodeRefine + Academic Lab */
-  --background: #0e0e10;
-  --foreground: #f8fafc;
+  /* Dark Mode Palette based on Jor Personal Assistant Style Guide */
+  --background: #000000;
+  --foreground: #F0FFF4;
 
-  --surface: #121212;
-  --surface-muted: #1a1a1e;
-  --surface-raised: #252525;
+  --surface: #050505;
+  --surface-muted: #0a0a0a;
+  --surface-raised: #111111;
 
-  --border: #1e1e24;
+  --border: rgba(0, 200, 83, 0.15);
 
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-primary: #F0FFF4;
+  --text-secondary: #86a898;
+  --text-muted: #4d6b5a;
 
-  --primary: #3b82f6;
-  --accent: #60a5fa;
-  --highlight: #38bdf8;
+  --primary: #00E5FF;
+  --brand: #00C853;
+  --brand-dark: #005C2E;
+  --accent: #39FF7F;
+  --highlight: #00E5FF;
+}
+
+/* Glass & Glow Utilities */
+.glass-card {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+}
+
+.glow-green {
+  box-shadow: 0 0 40px rgba(0, 229, 255, 0.3);
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, #00C853, #00E5FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-sphere {
+  background: radial-gradient(circle at 30% 30%, #39FF7F 0%, #00E5FF 40%, #00C853 80%, rgba(0, 229, 255, 0) 100%);
+  border-radius: 50%;
+  filter: blur(12px);
+  opacity: 0.8;
 }
 
 ::view-transition-group(root) {
@@ -193,4 +234,102 @@ nextjs-portal {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(150, 150, 150, 0.15);
+}
+
+/* Implementation Plan Viewer Styles */
+.prose h1:first-of-type {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.prose h2 {
+  color: #f0f6fc !important;
+  margin-top: 4rem !important;
+  font-weight: 700 !important;
+}
+
+/* Chat Markdown Styles */
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  font-weight: 700;
+  font-family: "Bw Gradual", var(--font-display), sans-serif;
+  color: #F0FFF4;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.chat-markdown h1:first-child,
+.chat-markdown h2:first-child,
+.chat-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.chat-markdown p {
+  margin-bottom: 0.75rem;
+  color: #F0FFF4;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  margin-bottom: 0.75rem;
+  padding-left: 1rem;
+}
+
+.chat-markdown li {
+  margin-bottom: 0.25rem;
+}
+
+.chat-markdown code:not(pre code) {
+  background: rgba(0, 229, 255, 0.1);
+  color: #00E5FF;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-code), monospace;
+  font-size: 11px;
+}
+
+.chat-markdown code::before,
+.chat-markdown code::after {
+  content: none !important;
+}
+
+.chat-markdown pre {
+  background: #050505;
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.chat-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: #F0FFF4;
+  font-size: 12px;
+}
+
+.chat-markdown strong {
+  color: #39FF7F;
+  /* Accent green for emphasis */
+  font-weight: 900;
+}
+
+.chat-markdown blockquote {
+  border-left: 2px solid #00C853;
+  padding-left: 0.75rem;
+  font-style: italic;
+  color: #86a898;
+  margin: 0.75rem 0;
+}
+
+.prose p,
+.prose li {
+  color: #9198a1 !important;
 }

@@ -24,12 +24,16 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
             inherit: true,
             rules: [],
             colors: {
-                "editor.background": "#0d1117",
-                "editor.lineHighlightBackground": "#161b22",
-                "editorLineNumber.foreground": "#484f58",
-                "editorIndentGuide.background": "#21262d",
-                "editorSuggestWidget.background": "#161b22",
-                "editorSuggestWidget.border": "#30363d",
+                "editor.background": "#000000",
+                "editor.lineHighlightBackground": "#051A1A",
+                "editorLineNumber.foreground": "#4d6b5a",
+                "editorLineNumber.activeForeground": "#39FF7F",
+                "editorIndentGuide.background": "#00E5FF15",
+                "editorSuggestWidget.background": "#050505",
+                "editorSuggestWidget.border": "#00E5FF30",
+                "editorSuggestWidget.selectedBackground": "#00E5FF20",
+                "editorWidget.background": "#000000",
+                "editorWidget.border": "#00E5FF30",
             },
         });
 

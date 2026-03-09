@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import CodeEditor from "../../components/CodeEditor";
+import PlanViewer from "../../components/PlanViewer";
 import ChatPanel, { type Message } from "../../components/ChatPanel";
 import Sidebar from "../../components/Sidebar";
 import FileExplorer, { type FileNode, type FileNodeType } from "../../components/FileExplorer";
@@ -42,6 +43,7 @@ type Tab = {
   filename: string;
   language: string;
   code: string;
+  type?: 'file' | 'plan';
 };
 
 export default function AppLayout() {
@@ -59,16 +61,19 @@ export default function AppLayout() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("agentic");
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [attachedFile, setAttachedFile] = useState<{ id: string, name: string } | null>(null);
 
   const [pendingEdits, setPendingEdits] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [previousAnalysis, setPreviousAnalysis] = useState<any>(null);
   const [lastExecution, setLastExecution] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +150,8 @@ export default function AppLayout() {
         id: node.id,
         filename: node.name,
         language: node.language || "typescript",
-        code: node.content !== undefined ? node.content : "// New empty file"
+        code: node.content !== undefined ? node.content : "// New empty file",
+        type: node.isPlan ? 'plan' : 'file'
       };
       setTabs([...tabs, newTab]);
     }
@@ -359,20 +365,24 @@ export default function AppLayout() {
     return result;
   };
 
-  const runAnalysis = async () => {
+  const runAnalysis = async (overrideFiles?: { filename: string; code: string }[]) => {
     if (!activeTab && files.length === 0) return;
     setIsAnalyzing(true);
     setAnalysis(null);
 
-    // Gather all files for analysis
-    const allFiles = extractAllFiles(files);
-
-    // If we only have one file and it's empty, prevent analysis (or just send it)
-    if (allFiles.length === 0 && activeTab) {
-      allFiles.push({ filename: activeTab.filename, code: activeTab.code });
+    // Use override if provided (e.g. after a rewrite), otherwise read from current tabs
+    let filesToAnalyze = overrideFiles;
+    if (!filesToAnalyze) {
+      // Read from tabs (the live editor state) not from the file tree
+      filesToAnalyze = tabs
+        .filter(t => t.type !== 'plan' && t.code?.trim())
+        .map(t => ({ filename: t.filename, code: t.code }));
+    }
+    if (filesToAnalyze.length === 0 && activeTab) {
+      filesToAnalyze = [{ filename: activeTab.filename, code: activeTab.code }];
     }
 
-    const result = await analyzeCodebase(allFiles);
+    const result = await analyzeCodebase(filesToAnalyze);
     setAnalysis(result);
     setIsAnalyzing(false);
   };
@@ -388,17 +398,17 @@ export default function AppLayout() {
 
     if (userMessage.toLowerCase().includes("run") || userMessage.toLowerCase().includes("execute")) {
       if (!activeTab) {
-        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "agent", content: "Please open a specific file to execute." }]);
+        setMessages(prev => [...prev, { id: "agent-" + Date.now(), role: "agent", content: "Please open a specific file to execute." }]);
         setIsLoading(false);
         return;
       }
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "agent", content: "Compiling..." }]);
+      setMessages(prev => [...prev, { id: "agent-" + Date.now(), role: "agent", content: "Compiling..." }]);
       const res = await executeCode(activeTab.code, activeTab.language);
       setLastExecution(res);
       setMessages(prev => {
         const newArr = [...prev];
         newArr[newArr.length - 1] = {
-          id: (Date.now() + 2).toString(), role: "agent", content: `Execution Finished (Exit ${res.exitCode}):\n\n${res.output}`
+          id: "agent-" + Date.now(), role: "agent", content: `Execution Finished (Exit ${res.exitCode}):\n\n${res.output}`
         };
         return newArr;
       });
@@ -408,48 +418,277 @@ export default function AppLayout() {
 
     try {
       let codeContext = "";
-      if (activeTab) {
-        codeContext = activeTab.code;
+      if (attachedFile) {
+        const node = findNodeById(files, attachedFile.id);
+        const attachedCode = tabs.find(t => t.id === attachedFile.id)?.code || node?.content || "";
+        codeContext = `ATTACHED FILE: ${attachedFile.name}\n---\n${attachedCode}\n---`;
+        setAttachedFile(null);
+      } else if (activeTab) {
+        codeContext = `ACTIVE FILE: ${activeTab.filename}\n---\n${activeTab.code}\n---`;
       } else {
         const allFiles = extractAllFiles(files);
         codeContext = allFiles.map(f => `File: ${f.filename}\n---\n${f.code}\n---`).join('\n\n');
       }
 
-      const result = await analyzeCode(codeContext, userMessage, { analysis, execution: lastExecution });
-      const hasChanges = result.changes && result.changes.length > 0;
+      // Add actual agent message placeholder - use a prefix to prevent ID collision with user message
+      const agentMsgId = "agent-" + Date.now();
+      const thoughtStartTime = Date.now();
+      setMessages(prev => [...prev, {
+        id: agentMsgId,
+        role: "agent",
+        content: "",
+        thoughts: [],
+        steps: [],
+        thoughtDuration: undefined
+      }]);
 
-      if (result.planDocument) {
-        const newId = "plan-" + Date.now().toString();
-        const planNode: FileNode = {
-          id: newId,
-          name: result.planDocument.filename || "improvement_plan.md",
-          type: "file",
-          language: "markdown",
-          content: result.planDocument.content
-        };
-        setFiles(prev => addNodeToTree(prev, null, planNode));
-        setTabs(prev => [...prev, { id: newId, filename: planNode.name, language: "markdown", code: planNode.content! }]);
-        setActiveTabId(newId);
-      }
+      const terminalContext = {
+        analysis: analysis ? {
+          scores: {
+            security: analysis.security,
+            performance: analysis.performance,
+            quality: analysis.quality,
+            overallRating: analysis.overallRating
+          },
+          bugs: analysis.bugs || []
+        } : null,
+        execution: lastExecution ? {
+          exitCode: lastExecution.exitCode,
+          output: lastExecution.output,
+          error: lastExecution.error
+        } : null
+      };
 
-      if (result.chat_response || hasChanges) {
-        setMessages((prev) => [...prev, {
-          id: Date.now().toString(),
-          role: "agent",
-          content: result.chat_response || "I have prepared an improvement plan document.",
-          changes: hasChanges ? result.changes : undefined
-        }]);
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: codeContext,
+          userMessage: userMessage,
+          context: terminalContext,
+          selectedModel: selectedModel
+        })
+      });
+
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          const typeMatch = line.match(/^\[(.*?)\]\s?(.*)/);
+          if (!typeMatch) continue;
+
+          const [, type, content] = typeMatch;
+
+          setMessages(prev => prev.map(msg => {
+            if (msg.id !== agentMsgId) return msg;
+
+            if (type === "THOUGHT") {
+              return { ...msg, thoughts: [...(msg.thoughts || []), content] };
+            }
+            if (type === "CHUNK") {
+              // First chunk signals end of thinking phase — record duration
+              const duration = msg.thoughtDuration !== undefined
+                ? msg.thoughtDuration
+                : Math.round((Date.now() - thoughtStartTime) / 1000);
+              // Append chunk + newline so markdown headers/lists render correctly
+              return { ...msg, content: (msg.content || "") + content + "\n", thoughtDuration: duration };
+            }
+            if (type === "STEP") {
+              try {
+                const step = JSON.parse(content);
+                const existingStepIdx = msg.steps?.findIndex(s => s.name === step.name);
+                let newSteps = [...(msg.steps || [])];
+                if (existingStepIdx !== undefined && existingStepIdx !== -1) {
+                  newSteps[existingStepIdx] = step;
+                } else {
+                  newSteps.push(step);
+                }
+                return { ...msg, steps: newSteps };
+              } catch { return msg; }
+            }
+            if (type === "FINAL") {
+              try {
+                const final = JSON.parse(content);
+                const updatedMsg = {
+                  ...msg,
+                  planDocument: final.planDocument,
+                  intendsToChange: final.intendsToChange,
+                  changes: final.changes || []
+                };
+                return updatedMsg;
+              } catch (e) {
+                console.error("Failed to parse FINAL content:", content, e);
+                return msg;
+              }
+            }
+            return msg;
+          }));
+        }
       }
-    } catch {
-      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "agent", content: "Error connecting to AI." }]);
+    } catch (err: any) {
+      console.error("Streaming Chat Error:", err);
+      setMessages((prev) => [...prev, { id: Date.now().toString(), role: "agent", content: "Error connecting to AI stream." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAcceptChanges = (messageId: string, changes: any[]) => {
-    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, isAccepted: true } : msg));
-    applyInlineRedGreenDiff(changes);
+  const handleAcceptChanges = async (messageId: string, changes: any[]) => {
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    const targetTab = tabs.find(t => t.id === activeTabId);
+    if (!targetTab) { console.error("No active tab to rewrite."); return; }
+
+    setIsLoading(true);
+
+    // Create a new agent message for the explanation stream
+    const explainMsgId = "agent-explain-" + Date.now();
+    setMessages(prev => [...prev, {
+      id: explainMsgId,
+      role: "agent",
+      content: "",
+      thoughts: [],
+      steps: [],
+      thoughtDuration: undefined
+    }]);
+
+    try {
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "execute",
+          code: targetTab.code,
+          context: { plan: msg.content },
+          selectedModel: selectedModel
+        })
+      });
+
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let rewrittenCode: string | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(Boolean);
+
+        for (const line of lines) {
+          const typeMatch = line.match(/^\[([A-Z_]+)\](.*)/);
+          if (!typeMatch) continue;
+          const [, type, content] = typeMatch;
+
+          // ── Update steps on the original planning message ──
+          if (type === "STEP") {
+            try {
+              const step = JSON.parse(content);
+              // Add steps to the explanation message
+              setMessages(prev => prev.map(m => {
+                if (m.id !== explainMsgId) return m;
+                const existingIdx = m.steps?.findIndex(s => s.name === step.name) ?? -1;
+                const newSteps = [...(m.steps || [])];
+                if (existingIdx !== -1) newSteps[existingIdx] = step;
+                else newSteps.push(step);
+                return { ...m, steps: newSteps };
+              }));
+            } catch { }
+          }
+
+          // ── THOUGHT lines go into the explanation message ──
+          if (type === "THOUGHT") {
+            setMessages(prev => prev.map(m =>
+              m.id === explainMsgId ? { ...m, thoughts: [...(m.thoughts || []), content] } : m
+            ));
+          }
+
+          // ── FINAL: apply the rewritten code immediately ──
+          if (type === "FINAL") {
+            try {
+              const final = JSON.parse(content);
+              if (final.rewrittenCode) {
+                rewrittenCode = final.rewrittenCode;
+                // Apply to tab state
+                setTabs(prev => prev.map(t =>
+                  t.id === targetTab.id ? { ...t, code: final.rewrittenCode } : t
+                ));
+                // Apply to Monaco editor instantly
+                if (editorRef.current) {
+                  editorRef.current.setValue(final.rewrittenCode);
+                }
+                // Mark original message as accepted
+                setMessages(prev => prev.map(m =>
+                  m.id === messageId ? { ...m, isAccepted: true } : m
+                ));
+              }
+            } catch (e) { console.error("Failed to parse execute FINAL:", e); }
+          }
+
+          // ── EXPLAIN_CHUNK: stream explanation into the new message ──
+          if (type === "EXPLAIN_CHUNK") {
+            setMessages(prev => prev.map(m =>
+              m.id === explainMsgId
+                ? { ...m, content: (m.content || "") + content + "\n" }
+                : m
+            ));
+          }
+
+          // ── EXPLAIN_DONE: trigger re-analysis using the rewritten code directly ──
+          if (type === "EXPLAIN_DONE" && rewrittenCode) {
+            // Capture current scores as "before"
+            if (analysis) setPreviousAnalysis(analysis);
+            // Pass the rewritten code directly — don't rely on stale React state
+            const analyzeFiles = [{ filename: targetTab.filename, code: rewrittenCode }];
+            setTimeout(() => {
+              runAnalysis(analyzeFiles);
+            }, 300);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Execution phase failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReviewPlan = (messageId: string) => {
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg || !msg.planDocument) return;
+
+    const planNode: FileNode = {
+      id: "plan-" + messageId,
+      name: msg.planDocument.filename || "improvement_plan.md",
+      type: "file",
+      language: "markdown",
+      content: msg.planDocument.content,
+      isPlan: true
+    };
+
+    // Add to tree if not exists
+    setFiles(prev => {
+      if (findNodeById(prev, planNode.id)) return prev;
+      return addNodeToTree(prev, null, planNode);
+    });
+
+    // Add to tabs if not exists
+    setTabs(prev => {
+      if (prev.find(t => t.id === planNode.id)) return prev;
+      return [...prev, { id: planNode.id, filename: planNode.name, language: "markdown", code: planNode.content!, type: 'plan' }];
+    });
+
+    setActiveTabId(planNode.id);
   };
 
   const handleRejectChanges = (messageId: string) => {
@@ -463,13 +702,9 @@ export default function AppLayout() {
 
     let newDecorations: any[] = [];
     const editsToTrack: any[] = [];
-
     let offset = 0;
 
-    // Filter changes to only those belonging to the currently active tab
-    // We assume the activeTab filename matches the change.filename. If filename is missing, we assume it belongs to the current file (backwards compatibility).
-    const activeFileChanges = changes.filter(c => !c.filename || c.filename === activeTab?.filename);
-    const sortedChanges = [...activeFileChanges].sort((a, b) => a.line - b.line);
+    const sortedChanges = [...changes].sort((a, b) => a.line - b.line);
 
     editor.executeEdits('ai-agent', sortedChanges.map(change => {
       const lineContent = editor.getModel().getLineContent(change.line);
@@ -483,23 +718,14 @@ export default function AppLayout() {
     sortedChanges.forEach((change) => {
       const actualLine = change.line + offset;
       editsToTrack.push({ originalLine: actualLine, newLine: actualLine + 1 });
-
       newDecorations.push({
         range: new monaco.Range(actualLine, 1, actualLine, 1),
-        options: {
-          isWholeLine: true, className: "bg-red-500/20 border-l-2 border-red-500 line-through text-red-300 opacity-60",
-          hoverMessage: { value: "**Removed by AI**" }
-        }
+        options: { isWholeLine: true, className: "bg-red-500/20 border-l-2 border-red-500 line-through text-red-300 opacity-60" }
       });
-
       newDecorations.push({
         range: new monaco.Range(actualLine + 1, 1, actualLine + 1, 1),
-        options: {
-          isWholeLine: true, className: "bg-green-500/20 border-l-2 border-green-500",
-          hoverMessage: { value: `**AI Fix (${change.category}):** ${change.reason}` }
-        }
+        options: { isWholeLine: true, className: "bg-green-500/20 border-l-2 border-green-500" }
       });
-
       offset += 1;
     });
 
@@ -512,13 +738,11 @@ export default function AppLayout() {
     const editor = editorRef.current;
     const editsToRun = [...pendingEdits].sort((a, b) => b.originalLine - a.originalLine);
 
-    editor.executeEdits('ai-accept', editsToRun.map(edit => {
-      return {
-        range: new monacoRef.current.Range(edit.originalLine, 1, edit.originalLine + 1, 1),
-        text: "",
-        forceMoveMarkers: true
-      };
-    }));
+    editor.executeEdits('ai-accept', editsToRun.map(edit => ({
+      range: new monacoRef.current.Range(edit.originalLine, 1, edit.originalLine + 1, 1),
+      text: "",
+      forceMoveMarkers: true
+    })));
 
     clearDecorations();
     setPendingEdits([]);
@@ -529,13 +753,11 @@ export default function AppLayout() {
     const editor = editorRef.current;
     const editsToRun = [...pendingEdits].sort((a, b) => b.newLine - a.newLine);
 
-    editor.executeEdits('ai-reject', editsToRun.map(edit => {
-      return {
-        range: new monacoRef.current.Range(edit.newLine - 1, 9999, edit.newLine, editor.getModel().getLineContent(edit.newLine).length + 1),
-        text: "",
-        forceMoveMarkers: true
-      };
-    }));
+    editor.executeEdits('ai-reject', editsToRun.map(edit => ({
+      range: new monacoRef.current.Range(edit.newLine - 1, 9999, edit.newLine, editor.getModel().getLineContent(edit.newLine).length + 1),
+      text: "",
+      forceMoveMarkers: true
+    })));
 
     clearDecorations();
     setPendingEdits([]);
@@ -573,11 +795,11 @@ export default function AppLayout() {
                         key={tab.id}
                         onClick={() => setActiveTabId(tab.id)}
                         className={`flex items-center gap-2 px-4 h-full border-r border-border min-w-[140px] max-w-[220px] cursor-pointer group transition-colors relative ${activeTabId === tab.id
-                          ? 'bg-background text-text-primary'
-                          : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+                          ? 'bg-[var(--surface)] text-[var(--text-primary)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]'
                           }`}
                       >
-                        {tab.id === activeTabId && <div className="absolute top-0 left-0 w-full h-[2px] bg-blue-500" />}
+                        {tab.id === activeTabId && <div className="absolute top-0 left-0 w-full h-[2px] bg-[var(--brand)]" />}
                         <div className="flex items-center gap-2 w-full overflow-hidden">
                           {(() => {
                             const name = tab.filename.toLowerCase();
@@ -618,7 +840,7 @@ export default function AppLayout() {
                     {pendingEdits.length > 0 && (
                       <div className="flex gap-2 animate-pulse mr-2">
                         <button onClick={rejectAllEdits} className="px-3 py-1 text-xs bg-red-500/10 text-red-500 border border-red-500/30 rounded shadow-sm hover:bg-red-500 hover:text-white transition-all">Reject</button>
-                        <button onClick={acceptAllEdits} className="px-3 py-1 text-xs bg-green-500/10 text-green-500 border border-green-500/30 rounded shadow-sm hover:bg-green-500 hover:text-white transition-all font-bold">Accept Fixes</button>
+                        <button onClick={acceptAllEdits} className="px-3 py-1 text-xs bg-[var(--brand)]/20 text-[var(--brand)] border border-[var(--brand)]/40 rounded shadow-sm hover:bg-[var(--brand)] hover:text-[#050507] transition-all font-bold">Accept Fixes</button>
                       </div>
                     )}
 
@@ -637,7 +859,7 @@ export default function AppLayout() {
                       });
                       // Trigger download
                       handleDownload();
-                    }} disabled={!activeTab} className="px-3 py-1 text-xs bg-zinc-800 text-zinc-300 border border-white/10 rounded shadow-sm hover:bg-zinc-700 hover:text-white transition-all flex items-center gap-1.5">
+                    }} disabled={!activeTab} className="px-3 py-1 text-xs bg-[var(--surface-raised)] text-[var(--text-secondary)] border border-[var(--border)] rounded shadow-sm hover:bg-[var(--surface)] hover:text-[var(--text-primary)] hover:border-[var(--brand)]/30 transition-all flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--brand)]">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
                       Save & Download
                     </button>
@@ -652,39 +874,44 @@ export default function AppLayout() {
                       </button>
 
                       {isUploadMenuOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-[#1e1e24] border border-white/10 rounded-lg shadow-xl py-1 z-50 animate-in fade-in zoom-in duration-100">
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--surface-raised)] border border-[var(--border-strong)] rounded-lg shadow-xl py-1 z-50 animate-in fade-in zoom-in duration-100">
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full text-left px-4 py-2 text-xs text-text-primary hover:bg-blue-500 hover:text-white transition-colors flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-[#050507] transition-colors flex items-center gap-2"
                           >
                             <FileUp className="w-3.5 h-3.5" />
                             Single File
                           </button>
                           <button
                             onClick={() => zipInputRef.current?.click()}
-                            className="w-full text-left px-4 py-2 text-xs text-text-primary hover:bg-blue-500 hover:text-white transition-colors flex flex-col items-start justify-center group"
+                            className="w-full text-left px-4 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--brand)] hover:text-[#050507] transition-colors flex flex-col items-start justify-center group"
                           >
                             <div className="flex items-center gap-2">
                               <FolderArchive className="w-3.5 h-3.5" />
                               Zip Folder
                             </div>
-                            <span className="text-[9px] text-text-secondary group-hover:text-white/70 ml-5.5 pl-1.5 -mt-0.5">Max 10MB Limit</span>
+                            <span className="text-[9px] text-[var(--text-muted)] group-hover:text-[#050507]/70 ml-5.5 pl-1.5 -mt-0.5">Max 10MB Limit</span>
                           </button>
                         </div>
                       )}
                     </div>
-                    <button onClick={runAnalysis} disabled={(!activeTab && files.length === 0) || isAnalyzing} className="ml-2 text-xs px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded font-medium transition-all disabled:opacity-50 flex items-center gap-1.5">
+                    <button onClick={() => runAnalysis()} disabled={(!activeTab && files.length === 0) || isAnalyzing} className="ml-2 text-xs px-3 py-1.5 bg-[var(--brand-light)] text-[var(--brand)] hover:bg-[var(--brand)] hover:text-[#050507] border border-[var(--brand)]/30 rounded font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/50 focus:ring-offset-1 focus:ring-offset-[var(--surface-muted)]">
                       <Activity className="w-3.5 h-3.5" />
                       Analyze
                     </button>
                   </div>
                 </div>
 
-                <div className="flex-1 relative bg-background">
+                <div className="flex-1 relative bg-background overflow-hidden">
                   {!activeTab ? (
                     <div className="absolute inset-0 flex items-center justify-center text-text-muted font-medium">
                       Select or create a file in the Explorer.
                     </div>
+                  ) : activeTab.type === 'plan' ? (
+                    <PlanViewer
+                      filename={activeTab.filename}
+                      content={activeTab.code}
+                    />
                   ) : (
                     <CodeEditor
                       code={activeTab.code}
@@ -697,51 +924,57 @@ export default function AppLayout() {
               </div>
             </Panel>
 
-            <PanelResizeHandle className="h-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-row-resize flex items-center justify-center border-y border-border relative z-20 group">
-              <div className="w-8 h-[2px] bg-foreground/10 rounded-full group-hover:bg-blue-400" />
+            <PanelResizeHandle className="h-1 bg-transparent hover:bg-[var(--brand)]/50 transition-colors cursor-row-resize flex items-center justify-center border-y border-[var(--border)] relative z-20 group">
+              <div className="w-8 h-[2px] bg-[var(--border-strong)] rounded-full group-hover:bg-[var(--brand)]" />
             </PanelResizeHandle>
 
             <Panel defaultSize={40} minSize={15}>
               {/* BOTTOM PANEL: Code Analytics Output */}
               <div className="h-full bg-background flex flex-col overflow-hidden">
-                <div className="h-10 border-b border-border flex items-center px-4 bg-surface-muted sticky top-0 z-10 shrink-0">
-                  <span className="text-xs font-semibold text-text-primary tracking-wider uppercase flex items-center gap-2">
-                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <div className="h-10 border-b border-[var(--border)] flex items-center px-4 bg-[var(--surface-raised)] sticky top-0 z-10 shrink-0">
+                  <span className="text-xs font-display font-bold text-[var(--text-primary)] tracking-wider uppercase flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-[var(--text-secondary)]" />
                     Terminal
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-background">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[var(--surface)]">
                   {!isAnalyzing && !analysis && (
-                    <div className="text-sm text-text-muted flex items-center justify-center h-full">Click "Analyze" to generate a security & performance scan report.</div>
+                    <div className="text-sm font-medium text-[var(--text-muted)] flex items-center justify-center h-full">Click "Analyze" to generate a security & performance scan report.</div>
                   )}
                   {isAnalyzing && (
-                    <div className="text-sm text-blue-500 font-mono flex items-center justify-center h-full animate-pulse">Running advanced SAST scan constraints...</div>
+                    <div className="text-sm text-[var(--brand)] font-mono font-medium flex items-center justify-center h-full animate-pulse">Running advanced SAST scan constraints...</div>
                   )}
                   {analysis && !isAnalyzing && (
                     <div className="animate-fade-in grid grid-cols-1 md:grid-cols-4 gap-6">
                       {/* Score Ring Grid */}
-                      {/* Score Ring Grid */}
                       <div className="col-span-1 md:col-span-1 flex flex-col gap-4">
-                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
-                          <div className="text-3xl font-black text-green-500 font-mono mb-1">{analysis.security}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Security</div>
-                          <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-green-500 animate-pulse" style={{ width: `${analysis.security}%` }}></div></div>
-                        </div>
-                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
-                          <div className="text-3xl font-black text-blue-500 font-mono mb-1">{analysis.performance}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Performance</div>
-                          <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-blue-500 animate-pulse" style={{ width: `${analysis.performance}%` }}></div></div>
-                        </div>
-                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
-                          <div className="text-3xl font-black text-amber-400 font-mono mb-1">{analysis.quality}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Code Quality</div>
-                          <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-amber-400 animate-pulse" style={{ width: `${analysis.quality}%` }}></div></div>
-                        </div>
-                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
-                          <div className="text-3xl font-black text-purple-500 font-mono mb-1">{analysis.overallRating}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Overall Rating</div>
-                          <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-purple-500 animate-pulse" style={{ width: `${analysis.overallRating}%` }}></div></div>
-                        </div>
+                        {[
+                          { key: "security", label: "Security", color: "text-green-500", bar: "bg-green-500" },
+                          { key: "performance", label: "Performance", color: "text-[var(--brand)]", bar: "bg-[var(--brand)]" },
+                          { key: "quality", label: "Code Quality", color: "text-emerald-400", bar: "bg-emerald-400" },
+                          { key: "overallRating", label: "Overall Rating", color: "text-[var(--text-primary)]", bar: "bg-[var(--text-primary)]" },
+                        ].map(({ key, label, color, bar }) => {
+                          const current = analysis[key] as number;
+                          const prev = previousAnalysis?.[key] as number | undefined;
+                          const delta = prev !== undefined ? current - prev : null;
+                          return (
+                            <div key={key} className="bg-[var(--surface-raised)] border border-[var(--border)] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                              <div className={`text-3xl font-display font-black ${color} mb-0.5`}>{current}</div>
+                              {delta !== null && (
+                                <div className={`flex items-center gap-0.5 text-[10px] font-bold mb-0.5 ${delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-gray-500"
+                                  }`}>
+                                  {delta > 0 ? "↑" : delta < 0 ? "↓" : "→"}
+                                  <span>{delta > 0 ? "+" : ""}{delta}</span>
+                                  <span className="text-[9px] font-normal text-gray-500 ml-0.5">from {prev}</span>
+                                </div>
+                              )}
+                              <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">{label}</div>
+                              <div className="absolute bottom-0 w-full h-1 bg-[var(--border)]">
+                                <div className={`h-full ${bar} transition-all duration-700`} style={{ width: `${current}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       {/* Bug List */}
@@ -777,14 +1010,28 @@ export default function AppLayout() {
           </PanelGroup>
         </Panel>
 
-        <PanelResizeHandle className="w-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-col-resize flex flex-col items-center justify-center border-x border-border relative z-20 group">
-          <div className="w-[2px] h-8 bg-foreground/10 rounded-full group-hover:bg-blue-400" />
+        <PanelResizeHandle className="w-1 bg-transparent hover:bg-[var(--brand)]/50 transition-colors cursor-col-resize flex flex-col items-center justify-center border-x border-[var(--border)] relative z-20 group">
+          <div className="w-[2px] h-8 bg-[var(--border-strong)] rounded-full group-hover:bg-[var(--brand)]" />
         </PanelResizeHandle>
 
         <Panel defaultSize={30} minSize={20} maxSize={50}>
           {/* RIGHT SECTION: Chatbot (CodeRefine Agent) */}
           <div className="h-full flex flex-col bg-background">
-            <ChatPanel messages={messages} input={input} setInput={setInput} onSubmit={handleChatSubmit} isLoading={isLoading} onAcceptChanges={handleAcceptChanges} onRejectChanges={handleRejectChanges} />
+            <ChatPanel
+              messages={messages}
+              input={input}
+              setInput={setInput}
+              onSubmit={handleChatSubmit}
+              isLoading={isLoading}
+              onAcceptChanges={handleAcceptChanges}
+              onRejectChanges={handleRejectChanges}
+              onReviewPlan={handleReviewPlan}
+              attachedFile={attachedFile}
+              onAttachFile={setAttachedFile}
+              onDetachFile={() => setAttachedFile(null)}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+            />
           </div>
         </Panel>
       </PanelGroup >
