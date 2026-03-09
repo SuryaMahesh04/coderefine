@@ -344,18 +344,45 @@ export default function AppLayout() {
     URL.revokeObjectURL(url);
   };
 
+  // Recursively extract all files
+  const extractAllFiles = (nodes: FileNode[]): { filename: string, code: string }[] => {
+    let result: { filename: string, code: string }[] = [];
+    for (const node of nodes) {
+      if (node.type === "file") {
+        // If the file is open in a tab, use the tab's code, otherwise use node.content
+        const openTab = tabs.find(t => t.id === node.id);
+        result.push({
+          filename: node.name,
+          code: openTab ? openTab.code : (node.content || "")
+        });
+      } else if (node.children) {
+        result.push(...extractAllFiles(node.children));
+      }
+    }
+    return result;
+  };
+
   const runAnalysis = async () => {
-    if (!activeTab) return;
+    if (!activeTab && files.length === 0) return;
     setIsAnalyzing(true);
     setAnalysis(null);
-    const result = await analyzeCodebase(activeTab.code);
+
+    // Gather all files for analysis
+    const allFiles = extractAllFiles(files);
+
+    // If we only have one file and it's empty, prevent analysis (or just send it)
+    if (allFiles.length === 0 && activeTab) {
+      allFiles.push({ filename: activeTab.filename, code: activeTab.code });
+    }
+
+    const result = await analyzeCodebase(allFiles);
     setAnalysis(result);
     setIsAnalyzing(false);
   };
 
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !activeTab) return;
+    if (!input.trim() || isLoading || (!activeTab && files.length === 0)) return;
 
     const userMessage = input.trim();
     setInput("");
@@ -363,6 +390,11 @@ export default function AppLayout() {
     setIsLoading(true);
 
     if (userMessage.toLowerCase().includes("run") || userMessage.toLowerCase().includes("execute")) {
+      if (!activeTab) {
+        setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "agent", content: "Please open a specific file to execute." }]);
+        setIsLoading(false);
+        return;
+      }
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: "agent", content: "Compiling..." }]);
       const res = await executeCode(activeTab.code, activeTab.language);
       setLastExecution(res);
@@ -378,7 +410,15 @@ export default function AppLayout() {
     }
 
     try {
-      const result = await analyzeCode(activeTab.code, userMessage, { analysis, execution: lastExecution });
+      let codeContext = "";
+      if (activeTab) {
+        codeContext = activeTab.code;
+      } else {
+        const allFiles = extractAllFiles(files);
+        codeContext = allFiles.map(f => `File: ${f.filename}\n---\n${f.code}\n---`).join('\n\n');
+      }
+
+      const result = await analyzeCode(codeContext, userMessage, { analysis, execution: lastExecution });
       if (result.chat_response) {
         setMessages((prev) => [...prev, { id: Date.now().toString(), role: "agent", content: result.chat_response }]);
       }
@@ -401,7 +441,11 @@ export default function AppLayout() {
     const editsToTrack: any[] = [];
 
     let offset = 0;
-    const sortedChanges = [...changes].sort((a, b) => a.line - b.line);
+
+    // Filter changes to only those belonging to the currently active tab
+    // We assume the activeTab filename matches the change.filename. If filename is missing, we assume it belongs to the current file (backwards compatibility).
+    const activeFileChanges = changes.filter(c => !c.filename || c.filename === activeTab?.filename);
+    const sortedChanges = [...activeFileChanges].sort((a, b) => a.line - b.line);
 
     editor.executeEdits('ai-agent', sortedChanges.map(change => {
       const lineContent = editor.getModel().getLineContent(change.line);
@@ -587,7 +631,7 @@ export default function AppLayout() {
                         </div>
                       )}
                     </div>
-                    <button onClick={runAnalysis} disabled={!activeTab || isAnalyzing} className="ml-2 text-xs px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded font-medium transition-all disabled:opacity-50 flex items-center gap-1.5">
+                    <button onClick={runAnalysis} disabled={(!activeTab && files.length === 0) || isAnalyzing} className="ml-2 text-xs px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded font-medium transition-all disabled:opacity-50 flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                       Analyze
                     </button>
@@ -634,6 +678,7 @@ export default function AppLayout() {
                   {analysis && !isAnalyzing && (
                     <div className="animate-fade-in grid grid-cols-1 md:grid-cols-4 gap-6">
                       {/* Score Ring Grid */}
+                      {/* Score Ring Grid */}
                       <div className="col-span-1 md:col-span-1 flex flex-col gap-4">
                         <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
                           <div className="text-3xl font-black text-green-500 font-mono mb-1">{analysis.security}</div>
@@ -650,6 +695,11 @@ export default function AppLayout() {
                           <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Code Quality</div>
                           <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-amber-400 animate-pulse" style={{ width: `${analysis.quality}%` }}></div></div>
                         </div>
+                        <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                          <div className="text-3xl font-black text-purple-500 font-mono mb-1">{analysis.overallRating}</div>
+                          <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Overall Rating</div>
+                          <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-purple-500 animate-pulse" style={{ width: `${analysis.overallRating}%` }}></div></div>
+                        </div>
                       </div>
 
                       {/* Bug List */}
@@ -665,6 +715,7 @@ export default function AppLayout() {
                             {analysis.bugs?.map((bug: any, i: number) => (
                               <div key={i} className="bg-white/[0.02] hover:bg-white/[0.04] transition-colors border-l-2 rounded-r-lg p-3 text-xs flex gap-4" style={{ borderLeftColor: bug.severity === 'critical' ? '#ef4444' : bug.severity === 'medium' ? '#fbbf24' : '#9ca3af' }}>
                                 <div className="w-16 shrink-0 pt-0.5">
+                                  {bug.filename && <div className="text-[9px] text-zinc-500 mb-0.5 truncate max-w-full" title={bug.filename}>{bug.filename}</div>}
                                   <span className={`font-mono font-bold ${bug.severity === 'critical' ? 'text-red-500' : 'text-amber-400'}`}>Line {bug.line}</span>
                                 </div>
                                 <div className="flex-1">
