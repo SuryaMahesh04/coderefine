@@ -8,6 +8,9 @@ export type Message = {
     id: string;
     role: "agent" | "user";
     content: string;
+    changes?: any[];
+    isAccepted?: boolean;
+    isRejected?: boolean;
 };
 
 interface ChatPanelProps {
@@ -16,9 +19,11 @@ interface ChatPanelProps {
     setInput: (val: string) => void;
     onSubmit: (e: React.FormEvent) => void;
     isLoading: boolean;
+    onAcceptChanges?: (messageId: string, changes: any[]) => void;
+    onRejectChanges?: (messageId: string) => void;
 }
 
-export default function ChatPanel({ messages, input, setInput, onSubmit, isLoading }: ChatPanelProps) {
+export default function ChatPanel({ messages, input, setInput, onSubmit, isLoading, onAcceptChanges, onRejectChanges }: ChatPanelProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll on new messages
@@ -50,13 +55,39 @@ export default function ChatPanel({ messages, input, setInput, onSubmit, isLoadi
                     </div>
                 ) : (
                     messages.map((msg) => (
-                        <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
+                        <div key={msg.id} className={`flex flex-col gap-2 ${msg.role === "user" ? "items-end" : "items-start"} animate-fade-in`}>
                             <div className={`max-w-[85%] rounded-2xl p-3.5 shadow-sm text-sm ${msg.role === "user"
                                 ? "bg-blue-600 text-white rounded-tr-sm font-medium"
                                 : "bg-surface-raised border border-border text-text-primary whitespace-pre-wrap leading-relaxed shadow-lg"
                                 }`}>
                                 {msg.content}
                             </div>
+                            {msg.role === "agent" && msg.changes && msg.changes.length > 0 && (
+                                <div className="ml-1 flex gap-2">
+                                    {msg.isAccepted && (
+                                        <span className="text-xs text-green-500 font-medium px-2 py-1 bg-green-500/10 rounded border border-green-500/20">✓ Changes Accepted</span>
+                                    )}
+                                    {msg.isRejected && (
+                                        <span className="text-xs text-zinc-500 font-medium px-2 py-1 bg-white/5 rounded border border-white/10">✗ Changes Rejected</span>
+                                    )}
+                                    {!msg.isAccepted && !msg.isRejected && (
+                                        <>
+                                            <button
+                                                onClick={() => onAcceptChanges?.(msg.id, msg.changes!)}
+                                                className="px-3 py-1.5 text-xs bg-green-500/10 text-green-500 border border-green-500/30 rounded shadow-sm hover:bg-green-500 hover:text-white transition-all font-semibold"
+                                            >
+                                                Accept Plan & Edit Code
+                                            </button>
+                                            <button
+                                                onClick={() => onRejectChanges?.(msg.id)}
+                                                className="px-3 py-1.5 text-xs bg-white/5 text-zinc-400 border border-white/10 rounded shadow-sm hover:bg-white/10 hover:text-white transition-all"
+                                            >
+                                                Reject
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
