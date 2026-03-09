@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronRight, Folder, FileCode, FilePlus, FolderPlus } from "lucide-react";
+
 
 export type FileNodeType = "file" | "folder";
 
@@ -69,7 +71,7 @@ export default function FileExplorer({
                 onBlur={() => setCreatingType(null)}
                 onKeyDown={(e) => e.key === 'Escape' && setCreatingType(null)}
                 placeholder={creatingType === "file" ? "filename.ext" : "folder name"}
-                className="w-full bg-[#1a1a1e] border border-blue-500/50 rounded px-2 py-0.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                className="w-full bg-surface-raised border border-blue-500/50 rounded px-2 py-0.5 text-xs text-text-primary focus:outline-none focus:border-blue-500"
             />
         </form>
     );
@@ -98,15 +100,15 @@ export default function FileExplorer({
                                     if (node.type === "folder") onToggleFolder(node.id, !node.isOpen);
                                 }}
                                 className={`flex items-center gap-2 py-1.5 px-2 rounded-sm cursor-pointer text-sm transition-colors ${isActiveFile ? "bg-blue-500/10 text-blue-400 font-medium" :
-                                    isSelected ? "bg-white/10 text-zinc-200" :
-                                        "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                                    isSelected ? "bg-foreground/10 text-text-primary" :
+                                        "text-text-secondary hover:bg-foreground/5 hover:text-text-primary"
                                     }`}
                                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                             >
                                 {node.type === "folder" ? (
                                     <>
-                                        <svg className={`w-3.5 h-3.5 transition-transform ${node.isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                        <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" /></svg>
+                                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${node.isOpen ? "rotate-90" : ""}`} />
+                                        <Folder className="w-4 h-4 text-blue-400" fill="currentColor" />
                                     </>
                                 ) : (
                                     <>
@@ -128,11 +130,11 @@ export default function FileExplorer({
                                             } else if (name.endsWith('.html')) {
                                                 return <svg className="w-4 h-4 text-[#e34f26]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
                                             } else if (name.includes('.config') || name.endsWith('.mjs') || name.endsWith('.cjs') || name.startsWith('.env') || name === '.gitignore' || name === 'package.json') {
-                                                return <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+                                                return <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
                                             }
 
                                             // Generic File
-                                            return <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
+                                            return <FileCode className="w-4 h-4 text-text-secondary shrink-0" />;
                                         })()}
                                     </>
                                 )}
@@ -157,25 +159,25 @@ export default function FileExplorer({
 
     return (
         <div
-            className="w-64 bg-[#141416] border-r border-white/[0.06] h-full flex flex-col shrink-0 flex-shrink-0 animate-fade-in relative z-10"
+            className="w-64 bg-surface-muted border-r border-border h-full flex flex-col shrink-0 flex-shrink-0 animate-fade-in relative z-10"
             onClick={() => onContextSelect(null)} // Click empty space to deselect
         >
-            <div className="h-14 flex items-center px-4 justify-between border-b border-white/[0.06] shrink-0">
-                <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Explorer</span>
+            <div className="h-14 flex items-center px-4 justify-between border-b border-border shrink-0">
+                <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">Explorer</span>
                 <div className="flex items-center gap-1">
                     <button
                         onClick={(e) => { e.stopPropagation(); setCreatingType("file"); }}
-                        className="p-1 text-zinc-500 hover:text-white rounded hover:bg-white/10 transition-colors"
+                        className="p-1 text-text-muted hover:text-white rounded hover:bg-foreground/10 transition-colors"
                         title="New File"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <FilePlus className="w-4 h-4" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); setCreatingType("folder"); }}
-                        className="p-1 text-zinc-500 hover:text-white rounded hover:bg-white/10 transition-colors"
+                        className="p-1 text-text-muted hover:text-white rounded hover:bg-foreground/10 transition-colors"
                         title="New Folder"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                        <FolderPlus className="w-4 h-4" />
                     </button>
                 </div>
             </div>

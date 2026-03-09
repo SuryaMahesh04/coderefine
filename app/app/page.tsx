@@ -10,6 +10,7 @@ import { executeCode } from "../actions/execute";
 import { analyzeCodebase } from "../actions/analyze";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import JSZip from "jszip";
+import { Download, Upload, FileUp, FolderArchive, Activity, Terminal } from "lucide-react";
 
 const EXTENSION_MAP: Record<string, string> = {
   "ts": "typescript", "tsx": "typescript", "js": "javascript", "jsx": "javascript",
@@ -63,11 +64,7 @@ export default function AppLayout() {
 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1", role: "agent", content: "Hi! I'm your AI Engineer. Try command: 'fix the bugs' or 'run the code'.",
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [pendingEdits, setPendingEdits] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -518,7 +515,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="flex w-full h-screen bg-[#0e0e10] text-zinc-300 overflow-hidden font-sans">
+    <div className="flex w-full h-screen bg-background text-text-primary overflow-hidden font-sans">
       <Sidebar explorerOpen={explorerOpen} onToggleExplorer={() => setExplorerOpen(!explorerOpen)} />
 
       <FileExplorer
@@ -540,17 +537,17 @@ export default function AppLayout() {
           <PanelGroup direction="vertical">
             <Panel defaultSize={60} minSize={30}>
               {/* LEFT SECTION: Editor Layout */}
-              <div className="flex flex-col h-full bg-[#0e0e10] relative min-w-0">
+              <div className="flex flex-col h-full bg-background relative min-w-0">
                 {/* Editor Tab Bar */}
-                <div className="flex items-center justify-between border-b border-[#1e1e24] bg-[#141416] shrink-0 sticky top-0 z-10 w-full pr-4 h-12">
+                <div className="flex items-center justify-between border-b border-border bg-surface-muted shrink-0 sticky top-0 z-10 w-full pr-4 h-12">
                   <div className="flex shrink-0 overflow-x-auto text-sm custom-scrollbar h-full flex-1 min-w-0">
                     {tabs.map((tab) => (
                       <div
                         key={tab.id}
                         onClick={() => setActiveTabId(tab.id)}
-                        className={`flex items-center gap-2 px-4 h-full border-r border-[#1e1e24] min-w-[140px] max-w-[220px] cursor-pointer group transition-colors relative ${activeTabId === tab.id
-                          ? 'bg-[#0e0e10] text-zinc-100'
-                          : 'text-zinc-500 hover:bg-[#1a1a1e] hover:text-zinc-300'
+                        className={`flex items-center gap-2 px-4 h-full border-r border-border min-w-[140px] max-w-[220px] cursor-pointer group transition-colors relative ${activeTabId === tab.id
+                          ? 'bg-background text-text-primary'
+                          : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
                           }`}
                       >
                         {tab.id === activeTabId && <div className="absolute top-0 left-0 w-full h-[2px] bg-blue-500" />}
@@ -572,16 +569,16 @@ export default function AppLayout() {
                             } else if (name.endsWith('.html')) {
                               return <svg className="w-4 h-4 text-[#e34f26]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
                             } else if (name.includes('.config') || name.endsWith('.mjs') || name.endsWith('.cjs') || name.startsWith('.env') || name === '.gitignore' || name === 'package.json') {
-                              return <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+                              return <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
                             }
                             // Generic File
-                            return <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
+                            return <svg className="w-4 h-4 text-text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>;
                           })()}
                           <span className="truncate SelectNone text-[13px] pt-px">{tab.filename}</span>
                         </div>
                         <button
                           onClick={(e) => handleCloseTab(e, tab.id)}
-                          className={`ml-auto shrink-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-white/10 p-1 transition-opacity ${tab.id === activeTabId ? 'opacity-100' : ''}`}
+                          className={`ml-auto shrink-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-foreground/10 p-1 transition-opacity ${tab.id === activeTabId ? 'opacity-100' : ''}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
@@ -597,50 +594,50 @@ export default function AppLayout() {
                         <button onClick={acceptAllEdits} className="px-3 py-1 text-xs bg-green-500/10 text-green-500 border border-green-500/30 rounded shadow-sm hover:bg-green-500 hover:text-white transition-all font-bold">Accept Fixes</button>
                       </div>
                     )}
-                    <button onClick={handleDownload} title="Download File" className="p-1.5 text-zinc-400 hover:bg-white/10 rounded transition-colors" disabled={!activeTab}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" /></svg>
+                    <button onClick={handleDownload} title="Download File" className="p-1.5 text-text-secondary hover:bg-foreground/10 rounded transition-colors" disabled={!activeTab}>
+                      <Download className="w-4 h-4" />
                     </button>
                     <div className="relative" ref={uploadMenuRef}>
                       <button
                         onClick={() => setIsUploadMenuOpen(!isUploadMenuOpen)}
                         title="Upload Local File"
-                        className={`p-1.5 rounded transition-colors hidden lg:block ${isUploadMenuOpen ? 'bg-white/10 text-white' : 'text-zinc-400 hover:bg-white/10'}`}
+                        className={`p-1.5 rounded transition-colors hidden lg:block ${isUploadMenuOpen ? 'bg-foreground/10 text-white' : 'text-text-secondary hover:bg-foreground/10'}`}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        <Upload className="w-4 h-4" />
                       </button>
 
                       {isUploadMenuOpen && (
                         <div className="absolute right-0 top-full mt-2 w-48 bg-[#1e1e24] border border-white/10 rounded-lg shadow-xl py-1 z-50 animate-in fade-in zoom-in duration-100">
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full text-left px-4 py-2 text-xs text-zinc-300 hover:bg-blue-500 hover:text-white transition-colors flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 text-xs text-text-primary hover:bg-blue-500 hover:text-white transition-colors flex items-center gap-2"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <FileUp className="w-3.5 h-3.5" />
                             Single File
                           </button>
                           <button
                             onClick={() => zipInputRef.current?.click()}
-                            className="w-full text-left px-4 py-2 text-xs text-zinc-300 hover:bg-blue-500 hover:text-white transition-colors flex flex-col items-start justify-center group"
+                            className="w-full text-left px-4 py-2 text-xs text-text-primary hover:bg-blue-500 hover:text-white transition-colors flex flex-col items-start justify-center group"
                           >
                             <div className="flex items-center gap-2">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                              <FolderArchive className="w-3.5 h-3.5" />
                               Zip Folder
                             </div>
-                            <span className="text-[9px] text-zinc-500 group-hover:text-white/70 ml-5.5 pl-1.5 -mt-0.5">Max 10MB Limit</span>
+                            <span className="text-[9px] text-text-secondary group-hover:text-white/70 ml-5.5 pl-1.5 -mt-0.5">Max 10MB Limit</span>
                           </button>
                         </div>
                       )}
                     </div>
                     <button onClick={runAnalysis} disabled={(!activeTab && files.length === 0) || isAnalyzing} className="ml-2 text-xs px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded font-medium transition-all disabled:opacity-50 flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                      <Activity className="w-3.5 h-3.5" />
                       Analyze
                     </button>
                   </div>
                 </div>
 
-                <div className="flex-1 relative bg-[#0e0e10]">
+                <div className="flex-1 relative bg-background">
                   {!activeTab ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-zinc-600 font-medium">
+                    <div className="absolute inset-0 flex items-center justify-center text-text-muted font-medium">
                       Select or create a file in the Explorer.
                     </div>
                   ) : (
@@ -655,22 +652,22 @@ export default function AppLayout() {
               </div>
             </Panel>
 
-            <PanelResizeHandle className="h-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-row-resize flex items-center justify-center border-y border-white/[0.06] relative z-20 group">
-              <div className="w-8 h-[2px] bg-white/10 rounded-full group-hover:bg-blue-400" />
+            <PanelResizeHandle className="h-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-row-resize flex items-center justify-center border-y border-border relative z-20 group">
+              <div className="w-8 h-[2px] bg-foreground/10 rounded-full group-hover:bg-blue-400" />
             </PanelResizeHandle>
 
             <Panel defaultSize={40} minSize={15}>
               {/* BOTTOM PANEL: Code Analytics Output */}
-              <div className="h-full bg-[#0e0e10] flex flex-col overflow-hidden">
-                <div className="h-10 border-b border-white/[0.06] flex items-center px-4 bg-[#141416] sticky top-0 z-10 shrink-0">
-                  <span className="text-xs font-semibold text-zinc-300 tracking-wider uppercase flex items-center gap-2">
+              <div className="h-full bg-background flex flex-col overflow-hidden">
+                <div className="h-10 border-b border-border flex items-center px-4 bg-surface-muted sticky top-0 z-10 shrink-0">
+                  <span className="text-xs font-semibold text-text-primary tracking-wider uppercase flex items-center gap-2">
                     <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                     Terminal
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#0e0e10]">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-background">
                   {!isAnalyzing && !analysis && (
-                    <div className="text-sm text-zinc-600 flex items-center justify-center h-full">Click "Analyze" to generate a security & performance scan report.</div>
+                    <div className="text-sm text-text-muted flex items-center justify-center h-full">Click "Analyze" to generate a security & performance scan report.</div>
                   )}
                   {isAnalyzing && (
                     <div className="text-sm text-blue-500 font-mono flex items-center justify-center h-full animate-pulse">Running advanced SAST scan constraints...</div>
@@ -680,31 +677,31 @@ export default function AppLayout() {
                       {/* Score Ring Grid */}
                       {/* Score Ring Grid */}
                       <div className="col-span-1 md:col-span-1 flex flex-col gap-4">
-                        <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
                           <div className="text-3xl font-black text-green-500 font-mono mb-1">{analysis.security}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Security</div>
+                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Security</div>
                           <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-green-500 animate-pulse" style={{ width: `${analysis.security}%` }}></div></div>
                         </div>
-                        <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
                           <div className="text-3xl font-black text-blue-500 font-mono mb-1">{analysis.performance}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Performance</div>
+                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Performance</div>
                           <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-blue-500 animate-pulse" style={{ width: `${analysis.performance}%` }}></div></div>
                         </div>
-                        <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
                           <div className="text-3xl font-black text-amber-400 font-mono mb-1">{analysis.quality}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Code Quality</div>
+                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Code Quality</div>
                           <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-amber-400 animate-pulse" style={{ width: `${analysis.quality}%` }}></div></div>
                         </div>
-                        <div className="bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="bg-surface-raised border border-border rounded-xl p-4 flex flex-col items-center justify-center relative overflow-hidden">
                           <div className="text-3xl font-black text-purple-500 font-mono mb-1">{analysis.overallRating}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Overall Rating</div>
+                          <div className="text-[9px] uppercase tracking-widest text-text-secondary font-bold">Overall Rating</div>
                           <div className="absolute bottom-0 w-full h-1 bg-white/5"><div className="h-full bg-purple-500 animate-pulse" style={{ width: `${analysis.overallRating}%` }}></div></div>
                         </div>
                       </div>
 
                       {/* Bug List */}
                       <div className="col-span-1 md:col-span-3">
-                        <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
+                        <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-3 flex items-center justify-between border-b border-border pb-2">
                           <span>Detected Vulnerabilities ({analysis.bugs?.length || 0})</span>
                           {analysis.bugs?.length > 0 && <span className="text-red-500">Action Required</span>}
                         </h3>
@@ -713,14 +710,14 @@ export default function AppLayout() {
                         ) : (
                           <div className="space-y-2 pr-2">
                             {analysis.bugs?.map((bug: any, i: number) => (
-                              <div key={i} className="bg-white/[0.02] hover:bg-white/[0.04] transition-colors border-l-2 rounded-r-lg p-3 text-xs flex gap-4" style={{ borderLeftColor: bug.severity === 'critical' ? '#ef4444' : bug.severity === 'medium' ? '#fbbf24' : '#9ca3af' }}>
+                              <div key={i} className="bg-foreground/5 hover:bg-foreground/10 transition-colors border-l-2 rounded-r-lg p-3 text-xs flex gap-4" style={{ borderLeftColor: bug.severity === 'critical' ? '#ef4444' : bug.severity === 'medium' ? '#fbbf24' : '#9ca3af' }}>
                                 <div className="w-16 shrink-0 pt-0.5">
-                                  {bug.filename && <div className="text-[9px] text-zinc-500 mb-0.5 truncate max-w-full" title={bug.filename}>{bug.filename}</div>}
+                                  {bug.filename && <div className="text-[9px] text-text-secondary mb-0.5 truncate max-w-full" title={bug.filename}>{bug.filename}</div>}
                                   <span className={`font-mono font-bold ${bug.severity === 'critical' ? 'text-red-500' : 'text-amber-400'}`}>Line {bug.line}</span>
                                 </div>
                                 <div className="flex-1">
-                                  <div className="font-semibold text-zinc-200 mb-0.5">{bug.category} <span className="text-zinc-500 font-normal ml-2">({bug.severity})</span></div>
-                                  <div className="text-zinc-400 leading-snug">{bug.message}</div>
+                                  <div className="font-semibold text-zinc-200 mb-0.5">{bug.category} <span className="text-text-secondary font-normal ml-2">({bug.severity})</span></div>
+                                  <div className="text-text-secondary leading-snug">{bug.message}</div>
                                 </div>
                               </div>
                             ))}
@@ -735,13 +732,13 @@ export default function AppLayout() {
           </PanelGroup>
         </Panel>
 
-        <PanelResizeHandle className="w-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-col-resize flex flex-col items-center justify-center border-x border-white/[0.06] relative z-20 group">
-          <div className="w-[2px] h-8 bg-white/10 rounded-full group-hover:bg-blue-400" />
+        <PanelResizeHandle className="w-1 bg-transparent hover:bg-blue-500/50 transition-colors cursor-col-resize flex flex-col items-center justify-center border-x border-border relative z-20 group">
+          <div className="w-[2px] h-8 bg-foreground/10 rounded-full group-hover:bg-blue-400" />
         </PanelResizeHandle>
 
         <Panel defaultSize={30} minSize={20} maxSize={50}>
           {/* RIGHT SECTION: Chatbot (CodeRefine Agent) */}
-          <div className="h-full flex flex-col bg-[#0e0e10]">
+          <div className="h-full flex flex-col bg-background">
             <ChatPanel messages={messages} input={input} setInput={setInput} onSubmit={handleChatSubmit} isLoading={isLoading} />
           </div>
         </Panel>

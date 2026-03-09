@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { Send } from "lucide-react";
+
 
 export type Message = {
     id: string;
@@ -25,36 +27,48 @@ export default function ChatPanel({ messages, input, setInput, onSubmit, isLoadi
     }, [messages, isLoading]);
 
     return (
-        <div className="flex flex-col h-full bg-[#0e0e10] border-l border-white/[0.06]">
+        <div className="flex flex-col h-full bg-background border-l border-border">
             {/* Header */}
-            <div className="h-14 border-b border-white/[0.06] flex items-center px-4 justify-between bg-[#141416] shrink-0">
+            <div className="h-14 border-b border-border flex items-center px-4 justify-between bg-surface-muted shrink-0">
                 <div className="flex items-center gap-2.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)] animate-pulse" />
-                    <span className="font-semibold text-zinc-200 tracking-tight text-sm">CodeRefine Agent</span>
+                    <span className="font-semibold text-text-primary tracking-tight text-sm">CodeRefine Agent</span>
                 </div>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-[#0e0e10]">
-                {messages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3.5 shadow-sm text-sm ${msg.role === "user"
-                            ? "bg-blue-600 text-white rounded-tr-sm font-medium"
-                            : "bg-[#1a1a1e] border border-white/[0.06] text-zinc-300 whitespace-pre-wrap leading-relaxed shadow-lg"
-                            }`}>
-                            {msg.content}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-background flex flex-col">
+                {messages.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
+                            <Send className="w-6 h-6 text-blue-500 opacity-50" />
                         </div>
+                        <h3 className="text-text-primary font-semibold mb-2">AI Coding Assistant</h3>
+                        <p className="text-sm text-text-muted leading-relaxed max-w-[240px]">
+                            You can use the agent to get recommendations, architectural insights, and automatic fixes for your code.
+                        </p>
                     </div>
-                ))}
+                ) : (
+                    messages.map((msg) => (
+                        <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
+                            <div className={`max-w-[85%] rounded-2xl p-3.5 shadow-sm text-sm ${msg.role === "user"
+                                ? "bg-blue-600 text-white rounded-tr-sm font-medium"
+                                : "bg-surface-raised border border-border text-text-primary whitespace-pre-wrap leading-relaxed shadow-lg"
+                                }`}>
+                                {msg.content}
+                            </div>
+                        </div>
+                    ))
+                )}
                 {isLoading && (
                     <div className="flex justify-start animate-fade-in">
-                        <div className="bg-[#1a1a1e] border border-white/[0.06] text-zinc-300 rounded-2xl rounded-tl-sm p-3.5 shadow-lg flex items-center gap-2">
+                        <div className="bg-surface-raised border border-border text-text-primary rounded-2xl rounded-tl-sm p-3.5 shadow-lg flex items-center gap-2">
                             <span className="flex space-x-1">
                                 <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                                 <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                                 <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></span>
                             </span>
-                            <span className="text-xs text-zinc-500 font-medium ml-2 uppercase tracking-widest">Thinking</span>
+                            <span className="text-xs text-text-muted font-medium ml-2 uppercase tracking-widest">Thinking</span>
                         </div>
                     </div>
                 )}
@@ -62,8 +76,8 @@ export default function ChatPanel({ messages, input, setInput, onSubmit, isLoadi
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-[#0e0e10] border-t border-white/[0.06]">
-                <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-1.5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all shadow-inner">
+            <div className="p-4 bg-background border-t border-border">
+                <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-surface-raised border border-border rounded-xl p-1.5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all shadow-inner">
                     <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
@@ -75,16 +89,16 @@ export default function ChatPanel({ messages, input, setInput, onSubmit, isLoadi
                         }}
                         disabled={isLoading}
                         placeholder={isLoading ? "Agent is working..." : "Ask me to fix or optimize..."}
-                        className="flex-1 bg-transparent border-none px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none resize-none min-h-[44px] max-h-[120px] custom-scrollbar disabled:opacity-50"
+                        className="flex-1 bg-transparent border-none px-3 py-2.5 text-sm text-text-primary placeholder-zinc-600 focus:outline-none resize-none min-h-[44px] max-h-[120px] custom-scrollbar disabled:opacity-50"
                         rows={1}
                     />
                     <button
                         type="submit"
                         disabled={!input.trim() || isLoading}
-                        className="bg-blue-600 text-white p-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-blue-500 transition-all mb-0.5 mr-0.5 shrink-0"
+                        className="bg-blue-600 text-white p-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:bg-zinc-800 disabled:text-text-muted hover:bg-blue-500 transition-all mb-0.5 mr-0.5 shrink-0"
                         title="Send message"
                     >
-                        <svg className="w-5 h-5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                        <Send className="w-5 h-5 -ml-0.5" />
                     </button>
                 </form>
             </div>

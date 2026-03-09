@@ -10,7 +10,14 @@ interface CodeEditorProps {
     onMount: (editor: any, monaco: Monaco) => void;
 }
 
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
 export default function CodeEditor({ code, language = "typescript", onChange, onMount }: CodeEditorProps) {
+    const { theme } = useTheme();
+    const [editorInstance, setEditorInstance] = useState<any>(null);
+    const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
+
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
         monaco.editor.defineTheme("coderefine-dark", {
             base: "vs-dark",
@@ -25,9 +32,32 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
                 "editorSuggestWidget.border": "#30363d",
             },
         });
-        monaco.editor.setTheme("coderefine-dark");
+
+        // Define a custom light theme
+        monaco.editor.defineTheme("coderefine-light", {
+            base: "vs",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#ffffff",
+                "editor.lineHighlightBackground": "#f1f5f9",
+            },
+        });
+
+        // Set initial theme
+        monaco.editor.setTheme(theme === "light" ? "coderefine-light" : "coderefine-dark");
+
+        setEditorInstance(editor);
+        setMonacoInstance(monaco);
         onMount(editor, monaco);
     };
+
+    // Watch for theme changes and update the editor dynamically
+    useEffect(() => {
+        if (monacoInstance) {
+            monacoInstance.editor.setTheme(theme === "light" ? "coderefine-light" : "coderefine-dark");
+        }
+    }, [theme, monacoInstance]);
 
     return (
         <div className="w-full h-full relative">

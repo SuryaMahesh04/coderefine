@@ -7,12 +7,17 @@
   --color-primary: var(--primary);
   --color-accent: var(--accent);
   --color-highlight: var(--highlight);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);
 
-  --color-border: var(--border);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -21,24 +26,25 @@
 }
 
 :root {
-  /* Slate + Brand Blue Palette for Light Mode */
-  --brand: #2563EB;
-  --brand-light: #EFF6FF;
-  --surface: #FFFFFF;
-  --surface-muted: #F8FAFC;
-  --surface-raised: #F1F5F9;
-  --border: #E2E8F0;
-  --border-strong: #CBD5E1;
-  --text-primary: #0F172A;
+  /* Light Mode Palette */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --surface-raised: #e2e8f0;
+
+  --border: #e2e8f0;
+
+  --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --text-muted: #64748b;
 
-  --radius: 0.5rem;
+  --primary: #008736;
+  --accent: #1C64F2;
+  --highlight: #f59e0b;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.55 0 0);
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -54,33 +60,34 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    @apply font-sans antialiased;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * {
-    @apply border-border;
+    border-color: var(--border);
   }
 }
 
 .dark {
-  /* Antigravity Dark Mode Palette */
-  --surface: #0e0e10;
-  --surface-muted: #141416;
-  --surface-raised: #1a1a1e;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.12);
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --brand: #3b82f6;
-  --brand-light: rgba(59, 130, 246, 0.1);
+  /* Dark Mode Palette based on current CodeRefine + Academic Lab */
+  --background: #0e0e10;
+  --foreground: #f8fafc;
 
-  --background: oklch(0.145 0 0);
-  /* approx #0e0e10 */
-  --foreground: oklch(0.985 0 0);
-  /* approx #e4e4e7 */
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --surface: #121212;
+  --surface-muted: #1a1a1e;
+  --surface-raised: #252525;
+
+  --border: #1e1e24;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+
+  --primary: #3b82f6;
+  --accent: #60a5fa;
+  --highlight: #38bdf8;
 }
 
 ::view-transition-group(root) {
@@ -92,6 +99,11 @@
   animation: none;
   mix-blend-mode: normal;
   display: block;
+}
+
+/* Hide Next.js Dev Indicator */
+nextjs-portal {
+  display: none !important;
 }
 
 ::view-transition-old(root) {
