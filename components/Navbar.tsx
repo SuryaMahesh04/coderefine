@@ -36,18 +36,16 @@ export function Navbar() {
     };
 
     return (
-        <nav className="fixed top-0 w-full z-50 bg-[var(--surface)]/80 backdrop-blur-md border-b border-[var(--border)] transition-colors">
+        <nav className="fixed top-0 w-full z-50 bg-[rgba(0,0,0,0.8)] backdrop-blur-xl border-b border-[rgba(0,229,255,0.15)] transition-colors">
             <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-14">
                     <div className="flex items-center gap-10">
                         {/* Logo */}
-                        <Link href="/" className="flex items-center gap-2 group">
-                            <div className="w-5 h-5 rounded bg-[var(--brand)] flex items-center justify-center p-[2px] shadow-[0_0_10px_rgba(88,166,255,0.3)]">
-                                <div className="w-full h-full bg-[var(--surface)] rounded-[2px] relative flex justify-center items-center">
-                                    <div className="w-1.5 h-1.5 bg-[var(--fixed)] rounded-full animate-pulse" />
-                                </div>
+                        <Link href="/" className="flex items-center gap-2.5 group">
+                            <div className="w-6 h-6 rounded-full gradient-sphere flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.4)] group-hover:shadow-[0_0_25px_rgba(0,229,255,0.6)] transition-all">
+                                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_5px_white]" />
                             </div>
-                            <span className="text-base font-bold tracking-tight text-[var(--text-primary)]">
+                            <span className="text-lg font-display font-bold tracking-tight text-[var(--text-primary)]">
                                 CodeRefine<span className="text-[var(--brand)]">.</span>
                             </span>
                         </Link>
@@ -68,21 +66,13 @@ export function Navbar() {
 
                     {/* Right side Actions */}
                     <div className="flex items-center gap-3">
-                        {mounted && (
-                            <button
-                                onClick={handleThemeToggle}
-                                className="p-2 text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] rounded-full transition-colors flex outline-none"
-                                aria-label="Toggle Theme"
-                            >
-                                {theme === "dark" ? <Sun size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
-                            </button>
-                        )}
+
 
                         <Link href="/login" className="hidden sm:block text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors ml-2">
                             Log in
                         </Link>
                         <Link href="/app">
-                            <button className="h-8 px-4 ml-2 rounded-md text-sm font-medium bg-[var(--text-primary)] hover:bg-[var(--text-secondary)] text-[var(--surface)] transition-all shadow-sm">
+                            <button className="h-8 px-4 ml-2 rounded-md text-sm font-bold bg-gradient-to-r from-[#00C853] to-[#00E5FF] hover:brightness-110 text-[#000000] transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)]">
                                 Try Sandbox
                             </button>
                         </Link>

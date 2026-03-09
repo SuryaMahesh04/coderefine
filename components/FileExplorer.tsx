@@ -1,0 +1,209 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronRight, Folder, FileCode, FilePlus, FolderPlus } from "lucide-react";
+
+
+export type FileNodeType = "file" | "folder";
+
+export type FileNode = {
+    id: string;
+    name: string;
+    type: FileNodeType;
+    language?: string;
+    children?: FileNode[];
+    isOpen?: boolean;
+    content?: string;
+    isPlan?: boolean;
+};
+
+interface FileExplorerProps {
+    files: FileNode[];
+    activeFileId: string;
+    selectedContextId: string | null;
+    onFileSelect: (id: string) => void;
+    onContextSelect: (id: string | null) => void;
+    onToggleFolder: (id: string, isOpen: boolean) => void;
+    onNewItem: (name: string, type: FileNodeType, parentId: string | null) => void;
+    isOpen: boolean;
+}
+
+const LANGUAGE_COLORS: Record<string, string> = {
+    typescript: "bg-blue-500",
+    javascript: "bg-yellow-400",
+    python: "bg-green-500",
+    cpp: "bg-purple-500",
+    go: "bg-cyan-400",
+    java: "bg-red-500",
+    rust: "bg-orange-500",
+};
+
+export default function FileExplorer({
+    files,
+    activeFileId,
+    selectedContextId,
+    onFileSelect,
+    onContextSelect,
+    onToggleFolder,
+    onNewItem,
+    isOpen
+}: FileExplorerProps) {
+    const [creatingType, setCreatingType] = useState<FileNodeType | null>(null);
+    const [newItemName, setNewItemName] = useState("");
+
+    if (!isOpen) return null;
+
+    const handleCreate = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newItemName.trim() || !creatingType) return;
+
+        onNewItem(newItemName, creatingType, selectedContextId);
+        setNewItemName("");
+        setCreatingType(null);
+    };
+
+    const CreationInput = ({ depth = 0 }: { depth?: number }) => (
+        <form onSubmit={handleCreate} className="my-0.5" style={{ paddingLeft: `${depth * 12 + 8}px` }}>
+            <input
+                type="text"
+                autoFocus
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onBlur={() => setCreatingType(null)}
+                onKeyDown={(e) => e.key === 'Escape' && setCreatingType(null)}
+                placeholder={creatingType === "file" ? "filename.ext" : "folder name"}
+                className="w-full bg-[#111111] border border-[rgba(0,229,255,0.3)] rounded px-2 py-0.5 text-xs text-[#F0FFF4] focus:outline-none focus:border-[#00E5FF] shadow-[0_0_10px_rgba(0,229,255,0.1)]"
+            />
+        </form>
+    );
+
+    const FileTree = ({ nodes, depth = 0 }: { nodes: FileNode[], depth?: number }) => {
+        const sortedNodes = [...nodes].sort((a, b) => {
+            if (a.type !== b.type) {
+                return a.type === "folder" ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        return (
+            <div className="w-full">
+                {sortedNodes.map(node => {
+                    const isSelected = node.id === selectedContextId;
+                    const isActiveFile = node.id === activeFileId;
+
+                    return (
+                        <div key={node.id}>
+                            <div
+                                draggable={node.type === "file"}
+                                onDragStart={(e) => {
+                                    if (node.type === "file") {
+                                        e.dataTransfer.setData("application/coderefine-file", JSON.stringify({
+                                            id: node.id,
+                                            name: node.name
+                                        }));
+                                        e.dataTransfer.effectAllowed = "copy";
+                                    }
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onContextSelect(node.id);
+                                    if (node.type === "file") onFileSelect(node.id);
+                                    if (node.type === "folder") onToggleFolder(node.id, !node.isOpen);
+                                }}
+                                className={`flex items-center gap-2 py-1.5 px-2 rounded-sm cursor-pointer text-sm transition-colors group/item ${isActiveFile ? "bg-[rgba(0,229,255,0.1)] text-[#00E5FF] font-bold border-l-[3px] border-[#00E5FF] -ml-[3px]" :
+                                    isSelected ? "bg-[#111111] text-[#F0FFF4]" :
+                                        "text-[#86a898] hover:bg-[#111111] hover:text-[#00E5FF]"
+                                    }`}
+                                style={{ paddingLeft: `${depth * 12 + 8}px` }}
+                            >
+                                {node.type === "folder" ? (
+                                    <>
+                                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${node.isOpen ? "rotate-90" : ""}`} />
+                                        <Folder className="w-4 h-4 text-[#005C2E]" fill="currentColor" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="w-3.5 h-3.5 shrink-0" /> {/* Spacer for alignment with folder chevron */}
+                                        {(() => {
+                                            const name = node.name.toLowerCase();
+                                            if (node.isPlan) {
+                                                return <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="m9 15 2 2 4-4" /></svg>;
+                                            }
+                                            if (name.endsWith('.tsx') || name.endsWith('.jsx')) {
+                                                return <svg className="w-4 h-4 text-[#61dafb] shrink-0" viewBox="0 0 114 114" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M57 91.9C37.07 91.9 20 84.15 20 74.45C20 64.75 37.07 57 57 57C76.93 57 94 64.75 94 74.45C94 84.15 76.93 91.9 57 91.9ZM57 61.2C40.4 61.2 26.6 67.2 26.6 74.45C26.6 81.7 40.4 87.7 57 87.7C73.6 87.7 87.4 81.7 87.4 74.45C87.4 67.2 73.6 61.2 57 61.2Z" fill="currentColor" /><path d="M39.55 101.9C29.6 84.6 33.7 65.4 48.7 56.65C63.7 47.9 83.95 52.8 93.9 70.1C103.85 87.4 99.75 106.6 84.75 115.35C69.75 124.1 49.5 119.2 39.55 101.9ZM87.85 73.65C79.8 60 63.6 56.1 52.1 62.8C40.6 69.5 37.3 84.2 45.35 97.85C53.4 111.5 69.6 115.4 81.1 108.7C92.6 102 95.9 87.3 87.85 73.65Z" fill="currentColor" /><path d="M74.45 101.9C84.4 84.6 80.3 65.4 65.3 56.65C50.3 47.9 30.05 52.8 20.1 70.1C10.15 87.4 14.25 106.6 29.25 115.35C44.25 124.1 64.5 119.2 74.45 101.9ZM26.15 73.65C34.2 60 50.4 56.1 61.9 62.8C73.4 69.5 76.7 84.2 68.65 97.85C60.6 111.5 44.4 115.4 32.9 108.7C21.4 102 18.1 87.3 26.15 73.65Z" fill="currentColor" /><circle cx="57" cy="74.45" r="7.4" fill="currentColor" /></svg>;
+                                            } else if (name.endsWith('.ts')) {
+                                                return <svg className="w-4 h-4 text-[#3178c6] shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="currentColor" /><path d="M12.9231 15.6562H9V27H12.9231V18.7344H14.8906V15.6562H12.9231ZM27 21.0938C27 18.4688 24.2769 17.5 22.1846 16.9219C20.6462 16.5156 19.8923 16.2031 19.8923 15.4688C19.8923 14.8125 20.3692 14.4062 21.3692 14.4062C22.2154 14.4062 23.3385 14.8125 23.8308 15.9062L26.4769 14.3438C25.4308 12.0625 23.5077 11.25 21.4308 11.25C18.6769 11.25 16.1231 12.8125 16.1231 15.75C16.1231 18.7188 19.1692 19.5 21.1692 20.0625C22.6923 20.4844 23.2308 20.9375 23.2308 21.75C23.2308 22.4063 22.6154 22.9531 21.4154 22.9531C20.4923 22.9531 19.1692 22.2969 18.5385 20.9219L15.6308 22.5625C16.6308 24.9688 19.0615 26.25 21.5077 26.25C24.3692 26.25 27 24.5781 27 21.0938Z" fill="white" /></svg>;
+                                            } else if (name.endsWith('.js') || name.endsWith('.mjs')) {
+                                                return <svg className="w-4 h-4 text-[#f7df1e] shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="4" fill="currentColor" /><path d="M12.9231 15.6562H9V23.75C9 25.1094 9.93846 26.25 11.4462 26.25C12.8308 26.25 13.9846 25.1719 14.1231 23.8281L11.3385 23.4688C11.2615 24 10.9538 24.25 10.4923 24.25C10.0154 24.25 9.8 24 9.8 23.25V15.6562H12.9231ZM27 21.0938C27 18.4688 24.2769 17.5 22.1846 16.9219C20.6462 16.5156 19.8923 16.2031 19.8923 15.4688C19.8923 14.8125 20.3692 14.4062 21.3692 14.4062C22.2154 14.4062 23.3385 14.8125 23.8308 15.9062L26.4769 14.3438C25.4308 12.0625 23.5077 11.25 21.4308 11.25C18.6769 11.25 16.1231 12.8125 16.1231 15.75C16.1231 18.7188 19.1692 19.5 21.1692 20.0625C22.6923 20.4844 23.2308 20.9375 23.2308 21.75C23.2308 22.4063 22.6154 22.9531 21.4154 22.9531C20.4923 22.9531 19.1692 22.2969 18.5385 20.9219L15.6308 22.5625C16.6308 24.9688 19.0615 26.25 21.5077 26.25C24.3692 26.25 27 24.5781 27 21.0938Z" fill="black" /></svg>;
+                                            } else if (name.endsWith('.json')) {
+                                                return <svg className="w-4 h-4 text-[#cbcb41]" fill="currentColor" viewBox="0 0 24 24"><path d="M5.5 12c0-1.5-1-2-2-2H3v-2h.5c1 0 2-.5 2-2V4h2v2c0 2 1.5 2.5 2.5 2.5H11v2h-1c-1 0-2.5.5-2.5 2.5s1.5 2.5 2.5 2.5h1v2h-1c-1 0-2.5.5-2.5 2.5V20h-2v-2c0-1.5-1-2-2-2H3v-2h.5c1 0 2-.5 2-2zm13 0c0-1.5 1-2 2-2h.5v-2H21c-1 0-2-.5-2-2V4h-2v2c0 2-1.5 2.5-2.5 2.5H13v2h1c1 0 2.5.5 2.5 2.5s-1.5 2.5-2.5 2.5h-1v2h1c1 0 2.5.5 2.5 2.5V20h2v-2c0-1.5 1-2 2-2h.5v-2H21c-1 0-2-.5-2-2z" /></svg>;
+                                            } else if (name.endsWith('.css')) {
+                                                return <svg className="w-4 h-4 text-[#264de4]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
+                                            } else if (name.endsWith('.ico') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.svg')) {
+                                                return <svg className="w-4 h-4 text-[#a074c4]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+                                            } else if (name.endsWith('.html')) {
+                                                return <svg className="w-4 h-4 text-[#e34f26]" viewBox="0 0 24 24" fill="currentColor"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm17.09 4.16l-.24-2.65H3.64l.87 9.87h12.5l-.54 5.99-4.5.11-4.52-1.22-.3-3.34H4.37l.45 5.56L11.97 20l7.15-1.95.84-9.35H7.13l-.2-2.18h11.66v-2.36z" /></svg>;
+                                            } else if (name.includes('.config') || name.endsWith('.mjs') || name.endsWith('.cjs') || name.startsWith('.env') || name === '.gitignore' || name === 'package.json') {
+                                                return <svg className="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+                                            }
+
+                                            // Generic File
+                                            return <FileCode className="w-4 h-4 text-text-secondary shrink-0" />;
+                                        })()}
+                                    </>
+                                )}
+                                <span className="truncate SelectNone">{node.name}</span>
+                            </div>
+
+                            {/* Render children if expanded folder */}
+                            {node.type === "folder" && node.isOpen && node.children && (
+                                <FileTree nodes={node.children} depth={depth + 1} />
+                            )}
+
+                            {/* Render creation input right below the selected folder if it's open */}
+                            {node.type === "folder" && node.isOpen && isSelected && creatingType && (
+                                <CreationInput depth={depth + 1} />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    return (
+        <div
+            className="w-64 bg-[#000000] border-r border-[rgba(0,229,255,0.1)] h-full flex flex-col shrink-0 flex-shrink-0 relative z-10"
+            onClick={() => onContextSelect(null)} // Click empty space to deselect
+        >
+            <div className="h-14 flex items-center px-4 justify-between border-b border-[rgba(0,229,255,0.15)] bg-[rgba(5,5,5,0.8)] shrink-0">
+                <span className="text-[10px] font-display font-black text-[#00E5FF] uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Explorer</span>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCreatingType("file"); }}
+                        className="p-1 text-[#4d6b5a] hover:text-[#00E5FF] hover:bg-[rgba(0,229,255,0.15)] rounded transition-colors"
+                        title="New File"
+                    >
+                        <FilePlus className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setCreatingType("folder"); }}
+                        className="p-1 text-[#4d6b5a] hover:text-[#00E5FF] hover:bg-[rgba(0,229,255,0.15)] rounded transition-colors"
+                        title="New Folder"
+                    >
+                        <FolderPlus className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+                {/* Render creation input at root if no folder is selected (or root is selected) */}
+                {!selectedContextId && creatingType && (
+                    <CreationInput depth={0} />
+                )}
+
+                <FileTree nodes={files} />
+            </div>
+        </div>
+    );
+}

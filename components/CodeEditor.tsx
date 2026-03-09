@@ -10,24 +10,58 @@ interface CodeEditorProps {
     onMount: (editor: any, monaco: Monaco) => void;
 }
 
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+
 export default function CodeEditor({ code, language = "typescript", onChange, onMount }: CodeEditorProps) {
+    const { theme } = useTheme();
+    const [editorInstance, setEditorInstance] = useState<any>(null);
+    const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
+
     const handleEditorDidMount = (editor: any, monaco: Monaco) => {
         monaco.editor.defineTheme("coderefine-dark", {
             base: "vs-dark",
             inherit: true,
             rules: [],
             colors: {
-                "editor.background": "#0d1117",
-                "editor.lineHighlightBackground": "#161b22",
-                "editorLineNumber.foreground": "#484f58",
-                "editorIndentGuide.background": "#21262d",
-                "editorSuggestWidget.background": "#161b22",
-                "editorSuggestWidget.border": "#30363d",
+                "editor.background": "#000000",
+                "editor.lineHighlightBackground": "#051A1A",
+                "editorLineNumber.foreground": "#4d6b5a",
+                "editorLineNumber.activeForeground": "#39FF7F",
+                "editorIndentGuide.background": "#00E5FF15",
+                "editorSuggestWidget.background": "#050505",
+                "editorSuggestWidget.border": "#00E5FF30",
+                "editorSuggestWidget.selectedBackground": "#00E5FF20",
+                "editorWidget.background": "#000000",
+                "editorWidget.border": "#00E5FF30",
             },
         });
-        monaco.editor.setTheme("coderefine-dark");
+
+        // Define a custom light theme
+        monaco.editor.defineTheme("coderefine-light", {
+            base: "vs",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#ffffff",
+                "editor.lineHighlightBackground": "#f1f5f9",
+            },
+        });
+
+        // Set initial theme
+        monaco.editor.setTheme(theme === "light" ? "coderefine-light" : "coderefine-dark");
+
+        setEditorInstance(editor);
+        setMonacoInstance(monaco);
         onMount(editor, monaco);
     };
+
+    // Watch for theme changes and update the editor dynamically
+    useEffect(() => {
+        if (monacoInstance) {
+            monacoInstance.editor.setTheme(theme === "light" ? "coderefine-light" : "coderefine-dark");
+        }
+    }, [theme, monacoInstance]);
 
     return (
         <div className="w-full h-full relative">
@@ -38,7 +72,12 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
                 onChange={onChange}
                 onMount={handleEditorDidMount}
                 options={{
-                    minimap: { enabled: false },
+                    minimap: {
+                        enabled: true,
+                        scale: 0.75,
+                        renderCharacters: false,
+                        showSlider: "mouseover"
+                    },
                     fontSize: 14,
                     fontFamily: "var(--font-code)",
                     lineHeight: 24,
@@ -50,8 +89,9 @@ export default function CodeEditor({ code, language = "typescript", onChange, on
                     formatOnPaste: true,
                     renderLineHighlight: "all",
                     scrollbar: {
-                        verticalScrollbarSize: 10,
-                        horizontalScrollbarSize: 10,
+                        verticalScrollbarSize: 4,
+                        horizontalScrollbarSize: 4,
+                        useShadows: false
                     }
                 }}
             />

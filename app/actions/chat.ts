@@ -7,7 +7,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function analyzeCode(code: string, userMessage: string, context?: { analysis?: any, execution?: any }) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
+    const proModel = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
+    const flashModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     let contextInfo = "";
     if (context?.analysis) {
@@ -17,59 +18,105 @@ export async function analyzeCode(code: string, userMessage: string, context?: {
       contextInfo += `\nLAST CODE EXECUTION OUTPUT:\n${JSON.stringify(context.execution, null, 2)}\n`;
     }
 
-    const prompt = `
-You are CodeRefine (Morph), a proactive senior AI software engineer.
-Your personality is professional, technically deep, and highly helpful.
-When interacting with the user:
-1. **Explain your rationale**: Always explain *what* you are changing and *why* it improves the code. Use technical terms correctly (e.g., "I'm optimizing this O(N^2) loop to O(N) using a Map for linear lookups").
-2. **Be proactive**: If you see a security risk or performance bottleneck that the user didn't mention, point it out and offer a fix.
-3. **Be clear**: Use bullet points if you are making multiple changes.
+    // Step 1: Get Insights, Plan, and Chat Response from Pro Model
+    const proPrompt = `
+You are CodeRefine (Morph), a senior AI engineer.
+Analyze the user's request and the code.
 
-The user is viewing their code in an editor and sent you a chat message.
-${contextInfo}
 USER MESSAGE: "${userMessage}"
-
+${contextInfo}
 CURRENT CODE:
 ${code}
 
 INSTRUCTIONS:
-1. Figure out if the user wants information or if they want to modify their code.
-2. If they want to modify the code (e.g., fix bugs, optimize, secure):
-   - **Optimization Rule**: NEVER simply delete a block of logic or a variable to "fix" a performance or security issue. 
-   - **Preserve Intent**: Always rewrite the code to achieve the same result but with a more efficient algorithm (e.g., use a Map/Set for O(1) lookups instead of O(N^2) loops) or more secure pattern (e.g., use process.env for secrets).
-   - Provide the rewritten code for that exact line (without line breaks unless necessary).
-   - "line" must be a 1-indexed integer.
-3. If the user asks to "run the code", just acknowledge it in \`chat_response\` (the client will handle execution separately).
-4. If they just ask a question, answer it in \`chat_response\` and leave \`changes\` empty.
+1. Figure out if the user is just saying hello, asking a general question, or explicitly requesting a code modification.
+2. **STRICT RULE ON INITIAL GREETINGS**: If the user just says "hi", "hello", or similar simple conversational greetings, you MUST ONLY reply with a friendly greeting and empty steps/thoughts.
+3. **CRITICAL RULE ON CHANGES**: If the user asks a conversational question, answer it in 'chat_response' and leave 'planDocument' null.
+4. HOWEVER, if the user explicitly asks you to "fix bugs", "optimize", "improve", or "analyze" the code:
+   - Provide a professional "Improvement Plan" in Markdown in the 'planDocument' field.
+   - Set 'intendsToChange' to true.
+   - Your 'chat_response' should be short, e.g., "I have generated a detailed professional improvement plan. Please review it."
 
-Return a valid JSON object matching this schema EXACTLY:
+Return a JSON with:
 {
-  "chat_response": "Your conversational reply to the user, explaining what you found and what fixes you are applying.",
+  "thoughts": ["step 1 reasoning", "step 2 reasoning"], 
+  "steps": [
+    {"name": "Step Name", "status": "done" | "running" | "pending", "summary": "Brief summary"}
+  ],
+  "chat_response": "string",
+  "planDocument": {
+    "filename": "improvement_plan.md",
+    "content": "markdown_content"
+  } | null,
+  "intendsToChange": boolean
+}
+`;
+
+    const proResult = await proModel.generateContent({
+      contents: [{ role: "user", parts: [{ text: proPrompt }] }],
+      generationConfig: { responseMimeType: "application/json" },
+    });
+
+    const proData = JSON.parse(proResult.response.text());
+    let finalChanges: any[] = [];
+
+    // Step 2: If code changes are needed, use Flash for the "Rewrites"
+    if (proData.intendsToChange) {
+      // Update steps to show we are generating code
+      if (proData.steps) {
+        proData.steps.push({ name: "Code Synthesis", status: "running", summary: "Generating precise line-by-line diffs..." });
+      }
+
+      const flashPrompt = `
+You are a fast code rewrite engine. 
+Based on this plan: "${proData.planDocument?.content || 'Improve the code'}", generate the exact line-by-line code changes.
+
+SOURCE CODE:
+${code}
+
+Return valid JSON:
+{
   "changes": [
     {
-      "line": 12,
-      "original": "exact text of the line to replace",
-      "rewritten": "the new text to insert at this line",
-      "reason": "short explanation, e.g., SQL injection fix",
+      "line": number,
+      "original": "exact original line",
+      "rewritten": "new line",
+      "reason": "why",
       "category": "bug" | "security" | "performance" | "quality"
     }
   ]
 }
 `;
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
+      const flashResult = await flashModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: flashPrompt }] }],
+        generationConfig: { responseMimeType: "application/json" },
+      });
 
-    const responseText = result.response.text();
-    return JSON.parse(responseText);
-  } catch (error: any) {
-    console.error("Gemini Error:", error);
+      const flashData = JSON.parse(flashResult.response.text());
+      finalChanges = flashData.changes || [];
+
+      // Mark synthesis as done
+      if (proData.steps) {
+        const synthStep = proData.steps.find((s: any) => s.name === "Code Synthesis");
+        if (synthStep) synthStep.status = "done";
+      }
+    }
+
     return {
-      chat_response: "Sorry, I am having trouble connecting to the AI brain right now. Please check your GEMINI_API_KEY.",
+      chat_response: proData.chat_response,
+      thoughts: proData.thoughts || [],
+      steps: proData.steps || [],
+      planDocument: proData.planDocument,
+      changes: finalChanges
+    };
+
+  } catch (error: any) {
+    console.error("Multi-Model Gemini Error:", error);
+    return {
+      chat_response: "I encountered an error while orchestrating the AI models. Please check your implementation.",
+      thoughts: ["Model connection failed"],
+      steps: [{ name: "AI Orchestration", status: "pending", summary: "Failed to connect to Gemini API" }],
       changes: []
     };
   }
