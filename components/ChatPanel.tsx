@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 export type Message = {
     id: string;
@@ -17,66 +17,77 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ messages, input, setInput, onSubmit, isLoading }: ChatPanelProps) {
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll on new messages
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isLoading]);
+
     return (
-        <div className="flex flex-col h-full bg-[#0d1117] border-l border-[#30363d]">
-            <div className="h-14 border-b border-[#30363d] flex items-center px-4 justify-between bg-[#161b22]">
-                <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#3fb950] animate-pulse" />
-                    <span className="font-semibold text-white tracking-tight">CodeRefine Agent</span>
+        <div className="flex flex-col h-full bg-[#0e0e10] border-l border-white/[0.06]">
+            {/* Header */}
+            <div className="h-14 border-b border-white/[0.06] flex items-center px-4 justify-between bg-[#141416] shrink-0">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)] animate-pulse" />
+                    <span className="font-semibold text-zinc-200 tracking-tight text-sm">CodeRefine Agent</span>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-[#0e0e10]">
                 {messages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[85%] rounded-xl p-3 shadow-sm ${msg.role === "user"
-                                ? "bg-[#58a6ff] text-[#0d1117] rounded-tr-none font-medium"
-                                : "bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded-tl-none whitespace-pre-wrap leading-relaxed shadow-lg"
+                    <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
+                        <div className={`max-w-[85%] rounded-2xl p-3.5 shadow-sm text-sm ${msg.role === "user"
+                            ? "bg-blue-600 text-white rounded-tr-sm font-medium"
+                            : "bg-[#1a1a1e] border border-white/[0.06] text-zinc-300 whitespace-pre-wrap leading-relaxed shadow-lg"
                             }`}>
                             {msg.content}
                         </div>
                     </div>
                 ))}
                 {isLoading && (
-                    <div className="flex justify-start">
-                        <div className="bg-[#161b22] border border-[#30363d] text-[#c9d1d9] rounded-xl rounded-tl-none p-4 shadow-lg flex items-center gap-2">
+                    <div className="flex justify-start animate-fade-in">
+                        <div className="bg-[#1a1a1e] border border-white/[0.06] text-zinc-300 rounded-2xl rounded-tl-sm p-3.5 shadow-lg flex items-center gap-2">
                             <span className="flex space-x-1">
-                                <span className="w-2 h-2 bg-[#58a6ff] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                <span className="w-2 h-2 bg-[#58a6ff] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                <span className="w-2 h-2 bg-[#58a6ff] rounded-full animate-bounce"></span>
+                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></span>
                             </span>
-                            <span className="text-sm text-gray-400 font-medium ml-2">Thinking...</span>
+                            <span className="text-xs text-zinc-500 font-medium ml-2 uppercase tracking-widest">Thinking</span>
                         </div>
                     </div>
                 )}
+                <div ref={bottomRef} />
             </div>
 
-            <div className="p-4 bg-[#161b22] border-t border-[#30363d]">
-                <form onSubmit={onSubmit} className="flex gap-2">
-                    <input
-                        type="text"
+            {/* Input Area */}
+            <div className="p-4 bg-[#0e0e10] border-t border-white/[0.06]">
+                <form onSubmit={onSubmit} className="relative flex items-end gap-2 bg-[#1a1a1e] border border-white/[0.06] rounded-xl p-1.5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all shadow-inner">
+                    <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                onSubmit(e);
+                            }
+                        }}
                         disabled={isLoading}
-                        placeholder={isLoading ? "Please wait..." : "Ask me to fix or optimize..."}
-                        className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff] transition-all shadow-inner disabled:opacity-50"
+                        placeholder={isLoading ? "Agent is working..." : "Ask me to fix or optimize..."}
+                        className="flex-1 bg-transparent border-none px-3 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none resize-none min-h-[44px] max-h-[120px] custom-scrollbar disabled:opacity-50"
+                        rows={1}
                     />
                     <button
                         type="submit"
                         disabled={!input.trim() || isLoading}
-                        className="bg-[#58a6ff] text-[#0d1117] px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:bg-[#79b8ff] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="bg-blue-600 text-white p-2.5 rounded-lg font-semibold disabled:opacity-50 disabled:bg-zinc-800 disabled:text-zinc-500 hover:bg-blue-500 transition-all mb-0.5 mr-0.5 shrink-0"
+                        title="Send message"
                     >
-                        Send
+                        <svg className="w-5 h-5 -ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                     </button>
                 </form>
             </div>
-
-            <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #484f58; }
-      `}</style>
         </div>
     );
 }

@@ -63,25 +63,24 @@
 }
 
 .dark {
-  /* Dark Mode Palette */
-  --surface: #0d1117;
-  --surface-muted: #010409;
-  --surface-raised: #161b22;
-  --border: #30363d;
-  --border-strong: #484f58;
-  --text-primary: #c9d1d9;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
-  --brand: #58a6ff;
-  --brand-light: rgba(88, 166, 255, 0.1);
+  /* Antigravity Dark Mode Palette */
+  --surface: #0e0e10;
+  --surface-muted: #141416;
+  --surface-raised: #1a1a1e;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
+  --brand: #3b82f6;
+  --brand-light: rgba(59, 130, 246, 0.1);
 
   --background: oklch(0.145 0 0);
-  /* matches approx #0d1117 */
+  /* approx #0e0e10 */
   --foreground: oklch(0.985 0 0);
-  /* matches approx #c9d1d9 */
+  /* approx #e4e4e7 */
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --border: oklch(1 0 0 / 15%);
 }
 
 ::view-transition-group(root) {
