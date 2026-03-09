@@ -66,15 +66,7 @@ export function Navbar() {
 
                     {/* Right side Actions */}
                     <div className="flex items-center gap-3">
-                        {mounted && (
-                            <button
-                                onClick={handleThemeToggle}
-                                className="p-2 text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[#00C853] rounded-full transition-colors flex outline-none"
-                                aria-label="Toggle Theme"
-                            >
-                                {theme === "dark" ? <Sun size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
-                            </button>
-                        )}
+
 
                         <Link href="/login" className="hidden sm:block text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors ml-2">
                             Log in

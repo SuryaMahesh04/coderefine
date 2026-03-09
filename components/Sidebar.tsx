@@ -113,21 +113,8 @@ export default function Sidebar({ explorerOpen = false, onToggleExplorer }: Side
         })}
       </nav>
 
-      {/* Settings Gear & Theme Toggle (Bottom) */}
+      {/* Bottom Buttons */}
       <div className="mt-auto w-full flex flex-col items-center gap-3 pb-2">
-        {mounted && (
-          <button
-            onClick={handleThemeToggle}
-            className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4d6b5a] hover:text-[#00C853] hover:bg-[rgba(0,200,83,0.05)] transition-colors group outline-none"
-            aria-label="Toggle Theme"
-          >
-            {theme === "dark" ? <Sun size={20} className="w-5 h-5" /> : <Moon size={20} className="w-5 h-5" />}
-            {/* Tooltip */}
-            <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
-              Toggle Theme
-            </div>
-          </button>
-        )}
 
         <button className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4d6b5a] hover:text-[#00C853] hover:bg-[rgba(0,200,83,0.05)] transition-colors group">
           <Settings className="w-5 h-5" />
