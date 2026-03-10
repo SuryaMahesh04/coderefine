@@ -15,7 +15,9 @@ import { Download, Upload, FileUp, FolderArchive, Activity, Terminal } from "luc
 
 const EXTENSION_MAP: Record<string, string> = {
   "ts": "typescript", "tsx": "typescript", "js": "javascript", "jsx": "javascript",
-  "py": "python", "cpp": "cpp", "c": "c", "java": "java", "go": "go", "rs": "rust"
+  "py": "python", "cpp": "cpp", "c": "c", "java": "java", "go": "go", "rs": "rust",
+  "cs": "csharp", "php": "php", "rb": "ruby", "swift": "swift", "kt": "kotlin",
+  "html": "html", "css": "css", "sql": "sql", "md": "markdown"
 };
 
 const LANGUAGE_TEMPLATES: Record<string, string> = {
@@ -72,6 +74,7 @@ export default function AppLayout() {
 
   const [pendingEdits, setPendingEdits] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingFile, setAnalyzingFile] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [previousAnalysis, setPreviousAnalysis] = useState<any>(null);
   const [lastExecution, setLastExecution] = useState<any>(null);
@@ -139,6 +142,34 @@ export default function AppLayout() {
     });
   };
 
+  const renameNodeInTree = (nodes: FileNode[], id: string, newName: string): FileNode[] => {
+    return nodes.map(node => {
+      if (node.id === id) {
+        let language = node.language;
+        if (node.type === "file") {
+          const ext = newName.split('.').pop() || "";
+          language = EXTENSION_MAP[ext] || "typescript";
+        }
+        return { ...node, name: newName, language };
+      }
+      if (node.children) {
+        return { ...node, children: renameNodeInTree(node.children, id, newName) };
+      }
+      return node;
+    });
+  };
+
+  const deleteNodeFromTree = (nodes: FileNode[], id: string): FileNode[] => {
+    return nodes
+      .filter(node => node.id !== id)
+      .map(node => {
+        if (node.children) {
+          return { ...node, children: deleteNodeFromTree(node.children, id) };
+        }
+        return node;
+      });
+  };
+
 
   const handleFileSelect = (id: string) => {
     const node = findNodeById(files, id);
@@ -198,6 +229,41 @@ export default function AppLayout() {
     setFiles(toggleFolderFolder(files, id, isOpen));
   };
 
+  const handleRenameItem = (id: string, newName: string) => {
+    setFiles(prev => renameNodeInTree(prev, id, newName));
+
+    // Also update tabs if renamed file is open
+    setTabs(prev => prev.map(tab => {
+      if (tab.id === id) {
+        const ext = newName.split('.').pop() || "";
+        const lang = EXTENSION_MAP[ext] || "typescript";
+        return { ...tab, filename: newName, language: lang };
+      }
+      return tab;
+    }));
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setFiles(prev => deleteNodeFromTree(prev, id));
+
+    // Close tab if open
+    setTabs(prev => {
+      const newTabs = prev.filter(t => t.id !== id);
+      if (activeTabId === id) {
+        if (newTabs.length > 0) {
+          setActiveTabId(newTabs[newTabs.length - 1].id);
+        } else {
+          setActiveTabId("");
+        }
+      }
+      return newTabs;
+    });
+
+    if (selectedContextId === id) {
+      setSelectedContextId(null);
+    }
+  };
+
   const handleCloseTab = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setTabs(prev => {
@@ -227,7 +293,12 @@ export default function AppLayout() {
   useEffect(() => {
     clearDecorations();
     setPendingEdits([]);
-    setAnalysis(null);
+    
+    // Don't clear terminal analysis if just looking at a plan
+    const newTab = tabs.find(t => t.id === activeTabId);
+    if (newTab?.type !== 'plan') {
+      setAnalysis(null);
+    }
   }, [activeTabId]);
 
   const handleUploadCode = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,13 +419,14 @@ export default function AppLayout() {
   };
 
   // Recursively extract all files
-  const extractAllFiles = (nodes: FileNode[]): { filename: string, code: string }[] => {
-    let result: { filename: string, code: string }[] = [];
+  const extractAllFiles = (nodes: FileNode[]): { id: string, filename: string, code: string }[] => {
+    let result: { id: string, filename: string, code: string }[] = [];
     for (const node of nodes) {
       if (node.type === "file") {
         // If the file is open in a tab, use the tab's code, otherwise use node.content
         const openTab = tabs.find(t => t.id === node.id);
         result.push({
+          id: node.id,
           filename: node.name,
           code: openTab ? openTab.code : (node.content || "")
         });
@@ -368,6 +440,7 @@ export default function AppLayout() {
   const runAnalysis = async (overrideFiles?: { filename: string; code: string }[]) => {
     if (!activeTab && files.length === 0) return;
     setIsAnalyzing(true);
+    setAnalyzingFile(null);
     setAnalysis(null);
 
     // Use override if provided (e.g. after a rewrite), otherwise read from current tabs
@@ -382,8 +455,60 @@ export default function AppLayout() {
       filesToAnalyze = [{ filename: activeTab.filename, code: activeTab.code }];
     }
 
-    const result = await analyzeCodebase(filesToAnalyze);
+    // Check if file extension is a valid programming language based on the filename
+    const hasValidExtension = (filename: string) => {
+      const parts = filename.split('.');
+      if (parts.length < 2) return false;
+      const ext = parts.pop()?.toLowerCase();
+      return ext ? (ext in EXTENSION_MAP) : false;
+    };
+
+    // Gate: Check if the text actually resembles multi-statement code before hitting the API
+    const isCodeLike = (text: string) => {
+      if (!text || text.trim().length < 5) return false;
+
+      // Extract alphanumeric "words" to avoid validating pure symbol spam
+      const wordCount = (text.match(/[a-zA-Z0-9_]+/g) || []).length;
+      if (wordCount < 2) return false; 
+
+      const patterns = [
+        /[{}\[\]()]/, // Block delimiters
+        /=|=>|\+=|::|:=/, // Operators
+        /\b(if|for|while|return|def|fn|class|func|import|export|const|let|var|case|switch|try|catch|match|async|await|print|console|log|echo)\b/, // Keywords
+        /;\s*$|:\s*$/, // Statement/Block terminators
+        /<|>|@|:\s*[A-Z][a-zA-Z]+/ // Types / Decorators
+      ];
+      
+      const matchCount = patterns.filter(p => p.test(text)).length;
+      return matchCount >= 2; // Needs at least 2 strong code signals to avoid single expressions
+    };
+
+    // Require both a valid script extension AND sufficient structural density
+    const hasCode = filesToAnalyze.some(f => hasValidExtension(f.filename) && isCodeLike(f.code));
+    
+    let result;
+    if (!hasCode) {
+      // Fast fail: Return a "no code" state mock without an API call
+      result = {
+        codeDetected: false,
+        security: 0,
+        performance: 0,
+        quality: 0,
+        overallRating: 0,
+        bugs: []
+      };
+    } else {
+      // Stream progress in the UI
+      for (const file of filesToAnalyze) {
+        setAnalyzingFile(file.filename);
+        // Artificial delay for Antigravity-style "scanning" visual effect
+        await new Promise(r => setTimeout(r, 600)); 
+      }
+      result = await analyzeCodebase(filesToAnalyze);
+    }
+
     setAnalysis(result);
+    setAnalyzingFile(null);
     setIsAnalyzing(false);
   };
 
@@ -417,17 +542,19 @@ export default function AppLayout() {
     }
 
     try {
-      let codeContext = "";
+      const allFiles = extractAllFiles(files);
+      const workspaceMap = allFiles.map(f => f.filename).join(', ');
+      
+      let codeContext = `WORKSPACE_FILES: [${workspaceMap}]\n\n`;
       if (attachedFile) {
         const node = findNodeById(files, attachedFile.id);
         const attachedCode = tabs.find(t => t.id === attachedFile.id)?.code || node?.content || "";
-        codeContext = `ATTACHED FILE: ${attachedFile.name}\n---\n${attachedCode}\n---`;
+        codeContext += `ATTACHED FILE: ${attachedFile.name}\n---\n${attachedCode}\n---`;
         setAttachedFile(null);
       } else if (activeTab) {
-        codeContext = `ACTIVE FILE: ${activeTab.filename}\n---\n${activeTab.code}\n---`;
+        codeContext += `ACTIVE FILE: ${activeTab.filename}\n---\n${activeTab.code}\n---`;
       } else {
-        const allFiles = extractAllFiles(files);
-        codeContext = allFiles.map(f => `File: ${f.filename}\n---\n${f.code}\n---`).join('\n\n');
+        codeContext += allFiles.map(f => `File: ${f.filename}\n---\n${f.code}\n---`).join('\n\n');
       }
 
       // Add actual agent message placeholder - use a prefix to prevent ID collision with user message
@@ -514,6 +641,37 @@ export default function AppLayout() {
                 return { ...msg, steps: newSteps };
               } catch { return msg; }
             }
+            if (type === "ANALYZE_WORKSPACE") {
+              try {
+                console.log("RECEIVED ANALYZE_WORKSPACE payload:", content);
+                const req = JSON.parse(content);
+                if (req.files && Array.isArray(req.files)) {
+                  const allFiles = extractAllFiles(files);
+                  console.log("Available files:", allFiles.map(f => f.filename));
+                  const filesToAnalyze: { id: string, filename: string, code: string }[] = req.files
+                    .map((filename: string) => {
+                      const fileNode = allFiles.find(f => f.filename === filename);
+                      if (!fileNode) {
+                        console.log("Could not find file in tree:", filename);
+                        return null;
+                      }
+                      // Prioritize tab code if open, else fallback to node content
+                      const tab = tabs.find(t => t.id === fileNode.id);
+                      return { id: fileNode.id, filename: fileNode.filename, code: tab ? tab.code : fileNode.code };
+                    })
+                    .filter((f: any) => f !== null) as { id: string, filename: string, code: string }[];
+
+                  console.log("Final files to analyze:", filesToAnalyze);
+                  if (filesToAnalyze.length > 0) {
+                    setIsAnalyzing(true);
+                    runAnalysis(filesToAnalyze);
+                  } else {
+                    console.warn("filesToAnalyze is empty! Terminal will not trigger.");
+                  }
+                }
+              } catch (e) { console.error("Failed to parse ANALYZE_WORKSPACE content:", e, content); }
+              return msg;
+            }
             if (type === "FINAL") {
               try {
                 const final = JSON.parse(content);
@@ -521,6 +679,7 @@ export default function AppLayout() {
                   ...msg,
                   planDocument: final.planDocument,
                   intendsToChange: final.intendsToChange,
+                  affectedFiles: final.affectedFiles || [],
                   changes: final.changes || []
                 };
                 return updatedMsg;
@@ -545,8 +704,14 @@ export default function AppLayout() {
     const msg = messages.find(m => m.id === messageId);
     if (!msg) return;
 
+    const isMultiFile = msg.affectedFiles && msg.affectedFiles.length > 1;
     const targetTab = tabs.find(t => t.id === activeTabId);
-    if (!targetTab) { console.error("No active tab to rewrite."); return; }
+
+    // If it's a single file operation, we MUST have a target tab to edit
+    if (!isMultiFile && !targetTab) { 
+        console.error("No active tab to rewrite for single file operation."); 
+        return; 
+    }
 
     setIsLoading(true);
 
@@ -561,100 +726,192 @@ export default function AppLayout() {
       thoughtDuration: undefined
     }]);
 
+
+    let targetFiles: { filename: string, code: string, id?: string }[] = [];
+    if (isMultiFile) {
+      const allFiles = extractAllFiles(files);
+      targetFiles = allFiles.filter(f => (msg.affectedFiles || []).includes(f.filename));
+    } else {
+      targetFiles = [{ filename: targetTab!.filename, code: targetTab!.code, id: targetTab!.id }];
+    }
+
     try {
-      const response = await fetch("/api/chat/stream", {
+      let analyzeFilesPayload: { filename: string, code: string }[] = [];
+      const rewrittenFilesDisplay: { filename: string, id?: string }[] = [];
+
+      // ── SEQUENTIAL AGENTIC EXECUTION LOOP ──
+      for (const target of targetFiles) {
+        
+        // Add a step indicator for this specific file
+        setMessages(prev => prev.map(m => {
+          if (m.id !== explainMsgId) return m;
+          const newSteps = [...(m.steps || [])];
+          newSteps.push({ name: `Rewriting ${target.filename}`, status: "running", summary: "Applying plan to file..." });
+          return { ...m, steps: newSteps };
+        }));
+
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "execute",
+            code: target.code, // sending ONLY this single file's code
+            context: { plan: msg.content, isMultiFile: false, targetFile: target.filename }, // Force single-file mode on backend
+            selectedModel: selectedModel
+          })
+        });
+
+        if (!response.body) throw new Error("No response body");
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n').filter(Boolean);
+
+          for (const line of lines) {
+            const typeMatch = line.match(/^\[([A-Z_]+)\](.*)/);
+            if (!typeMatch) continue;
+            const [, type, content] = typeMatch;
+
+            // ── THOUGHT lines go into the explanation message ──
+            if (type === "THOUGHT") {
+              setMessages(prev => prev.map(m =>
+                m.id === explainMsgId ? { ...m, thoughts: [...(m.thoughts || []), content] } : m
+              ));
+            }
+
+            // ── FINAL: apply the rewritten code immediately ──
+            if (type === "FINAL") {
+              try {
+                const final = JSON.parse(content);
+                
+                if (final.rewrittenCode) {
+                  analyzeFilesPayload.push({ filename: target.filename, code: final.rewrittenCode });
+                  
+                  // Add to the visual display pill list
+                  let foundId = target.id;
+                  if (!foundId) {
+                     const foundNode = extractAllFiles(files).find(n => n.filename === target.filename);
+                     foundId = foundNode?.id;
+                  }
+                  rewrittenFilesDisplay.push({ filename: target.filename, id: foundId });
+
+                  // Apply to tab state
+                  setTabs(prev => prev.map(t =>
+                    t.filename === target.filename ? { ...t, code: final.rewrittenCode } : t
+                  ));
+
+                  // Apply to Virtual File Tree
+                  setFiles(prev => {
+                    const updateNode = (nodes: FileNode[]): FileNode[] => {
+                      return nodes.map(node => {
+                        if (node.type === "file" && node.name === target.filename) {
+                          return { ...node, content: final.rewrittenCode };
+                        }
+                        if (node.children) return { ...node, children: updateNode(node.children) };
+                        return node;
+                      });
+                    };
+                    return updateNode(prev);
+                  });
+
+                  // Apply to Monaco editor instantly if it's the active tab
+                  if (activeTabId && editorRef.current) {
+                      const activeTabNow = tabs.find(t => t.id === activeTabId);
+                      if (activeTabNow && activeTabNow.filename === target.filename) {
+                          editorRef.current.setValue(final.rewrittenCode);
+                      }
+                  }
+
+                }
+              } catch (e) { console.error("Failed to parse execute FINAL:", e); }
+            }
+          }
+        } // end stream inner loop
+
+        // Mark this file's step as done
+        setMessages(prev => prev.map(m => {
+          if (m.id !== explainMsgId) return m;
+          const newSteps = [...(m.steps || [])];
+          const stepIdx = newSteps.findIndex(s => s.name === `Rewriting ${target.filename}`);
+          if (stepIdx !== -1) {
+             newSteps[stepIdx].status = "done";
+             newSteps[stepIdx].summary = "Done";
+          }
+          return { ...m, steps: newSteps };
+        }));
+
+      } // end targetFiles loop
+
+      // ── MARK MESSAGE ACCEPTED AND SHOW FILES ──
+      setMessages(prev => prev.map(m => {
+        if (m.id === explainMsgId) {
+          return { ...m, rewrittenFiles: rewrittenFilesDisplay };
+        }
+        if (m.id === messageId) {
+          return { ...m, isAccepted: true };
+        }
+        return m;
+      }));
+
+      // ── POST-EXECUTE GENERATE SUMMARY EXPLANATION ──
+      setMessages(prev => prev.map(m => {
+        if (m.id !== explainMsgId) return m;
+        const newSteps = [...(m.steps || [])];
+        newSteps.push({ name: "Generating change summary", status: "running", summary: "Summarizing all changes made..." });
+        return { ...m, steps: newSteps, thoughts: [...(m.thoughts || []), "Now I will summarize exactly what I changed across all the files."] };
+      }));
+
+      const summaryResponse = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "execute",
-          code: targetTab.code,
-          context: { plan: msg.content },
+          mode: "execute_summary", // We'll add this mode to route.ts
+          context: { plan: msg.content, targetFiles: analyzeFilesPayload },
           selectedModel: selectedModel
         })
       });
 
-      if (!response.body) throw new Error("No response body");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      let rewrittenCode: string | null = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(Boolean);
-
-        for (const line of lines) {
-          const typeMatch = line.match(/^\[([A-Z_]+)\](.*)/);
-          if (!typeMatch) continue;
-          const [, type, content] = typeMatch;
-
-          // ── Update steps on the original planning message ──
-          if (type === "STEP") {
-            try {
-              const step = JSON.parse(content);
-              // Add steps to the explanation message
-              setMessages(prev => prev.map(m => {
-                if (m.id !== explainMsgId) return m;
-                const existingIdx = m.steps?.findIndex(s => s.name === step.name) ?? -1;
-                const newSteps = [...(m.steps || [])];
-                if (existingIdx !== -1) newSteps[existingIdx] = step;
-                else newSteps.push(step);
-                return { ...m, steps: newSteps };
-              }));
-            } catch { }
-          }
-
-          // ── THOUGHT lines go into the explanation message ──
-          if (type === "THOUGHT") {
-            setMessages(prev => prev.map(m =>
-              m.id === explainMsgId ? { ...m, thoughts: [...(m.thoughts || []), content] } : m
-            ));
-          }
-
-          // ── FINAL: apply the rewritten code immediately ──
-          if (type === "FINAL") {
-            try {
-              const final = JSON.parse(content);
-              if (final.rewrittenCode) {
-                rewrittenCode = final.rewrittenCode;
-                // Apply to tab state
-                setTabs(prev => prev.map(t =>
-                  t.id === targetTab.id ? { ...t, code: final.rewrittenCode } : t
-                ));
-                // Apply to Monaco editor instantly
-                if (editorRef.current) {
-                  editorRef.current.setValue(final.rewrittenCode);
-                }
-                // Mark original message as accepted
-                setMessages(prev => prev.map(m =>
-                  m.id === messageId ? { ...m, isAccepted: true } : m
-                ));
-              }
-            } catch (e) { console.error("Failed to parse execute FINAL:", e); }
-          }
-
-          // ── EXPLAIN_CHUNK: stream explanation into the new message ──
-          if (type === "EXPLAIN_CHUNK") {
-            setMessages(prev => prev.map(m =>
-              m.id === explainMsgId
-                ? { ...m, content: (m.content || "") + content + "\n" }
-                : m
-            ));
-          }
-
-          // ── EXPLAIN_DONE: trigger re-analysis using the rewritten code directly ──
-          if (type === "EXPLAIN_DONE" && rewrittenCode) {
-            // Capture current scores as "before"
-            if (analysis) setPreviousAnalysis(analysis);
-            // Pass the rewritten code directly — don't rely on stale React state
-            const analyzeFiles = [{ filename: targetTab.filename, code: rewrittenCode }];
-            setTimeout(() => {
-              runAnalysis(analyzeFiles);
-            }, 300);
-          }
+      if (summaryResponse.body) {
+        const sumReader = summaryResponse.body.getReader();
+        const sumDecoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await sumReader.read();
+          if (done) break;
+          const chunk = sumDecoder.decode(value);
+          const lines = chunk.split('\n').filter(Boolean);
+          for (const line of lines) {
+             if (line.match(/^\[EXPLAIN_CHUNK\](.*)/)) {
+                 const content = line.substring(15);
+                 setMessages(prev => prev.map(m =>
+                  m.id === explainMsgId ? { ...m, content: (m.content || "") + content + "\n" } : m
+                 ));
+             }
+             if (line.match(/^\[EXPLAIN_DONE\]/)) {
+                 setMessages(prev => prev.map(m => {
+                    if (m.id !== explainMsgId) return m;
+                    const newSteps = [...(m.steps || [])];
+                    const stepIdx = newSteps.findIndex(s => s.name === "Generating change summary");
+                    if (stepIdx !== -1) {
+                       newSteps[stepIdx].status = "done";
+                       newSteps[stepIdx].summary = "Finished.";
+                    }
+                    return { ...m, steps: newSteps };
+                  }));
+             }
         }
+      }
+
+      // ── TRIGGER RE-ANALYSIS USING REWRITTEN CODE ──
+      if (analyzeFilesPayload.length > 0) {
+        if (analysis) setPreviousAnalysis(analysis);
+        setTimeout(() => {
+          runAnalysis(analyzeFilesPayload);
+        }, 300);
+      }
       }
     } catch (err) {
       console.error("Execution phase failed:", err);
@@ -775,6 +1032,8 @@ export default function AppLayout() {
         onContextSelect={setSelectedContextId}
         onToggleFolder={handleToggleFolder}
         onNewItem={handleNewItem}
+        onRenameItem={handleRenameItem}
+        onDeleteItem={handleDeleteItem}
         isOpen={isSidebarOpen}
       />
 
@@ -942,9 +1201,32 @@ export default function AppLayout() {
                     <div className="text-sm font-medium text-[var(--text-muted)] flex items-center justify-center h-full">Click "Analyze" to generate a security & performance scan report.</div>
                   )}
                   {isAnalyzing && (
-                    <div className="text-sm text-[var(--brand)] font-mono font-medium flex items-center justify-center h-full animate-pulse">Running advanced SAST scan constraints...</div>
+                    <div className="flex flex-col items-center justify-center h-full gap-3 animate-pulse">
+                      <div className="text-sm text-[var(--brand)] font-mono font-medium">
+                        Running advanced SAST scan constraints...
+                      </div>
+                      {analyzingFile && (
+                        <div className="text-xs text-[var(--text-secondary)] font-mono">
+                          <span className="opacity-50">&gt; Analyzing </span>
+                          <span className="text-[var(--text-primary)] font-bold">{analyzingFile}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {analysis && !isAnalyzing && (
+                  {analysis && !isAnalyzing && analysis.codeDetected === false && (
+                    <div className="animate-fade-in flex flex-col items-center justify-center h-full text-center space-y-3 opacity-70">
+                      <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--text-primary)]">No Code Detected</h3>
+                        <p className="text-xs text-[var(--text-muted)] mt-1 max-w-[250px] mx-auto">The active file does not contain enough recognizable programming syntax to analyze.</p>
+                      </div>
+                    </div>
+                  )}
+                  {analysis && !isAnalyzing && analysis.codeDetected !== false && (
                     <div className="animate-fade-in grid grid-cols-1 md:grid-cols-4 gap-6">
                       {/* Score Ring Grid */}
                       <div className="col-span-1 md:col-span-1 flex flex-col gap-4">
@@ -1031,6 +1313,7 @@ export default function AppLayout() {
               onDetachFile={() => setAttachedFile(null)}
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}
+              onFileClick={handleFileSelect}
             />
           </div>
         </Panel>

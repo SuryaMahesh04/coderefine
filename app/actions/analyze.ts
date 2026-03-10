@@ -22,6 +22,7 @@ ${formattedCode}
 INSTRUCTIONS:
 Return a valid JSON object matching this schema EXACTLY:
 {
+  "codeDetected": boolean,
   "security": number (0-100),
   "performance": number (0-100),
   "quality": number (0-100),
@@ -38,9 +39,9 @@ Return a valid JSON object matching this schema EXACTLY:
 }
 
 ADDITIONAL RULES:
+- **Code Check**: A valid codebase should ideally contain multiple programming statements. However, standard built-in functions like \`print("...")\`, \`console.log("...")\`, or \`fmt.Println("...")\` are CONSIDERED valid code even as a single line. In contrast, a single arbitrary expression (e.g. \`bhaibhai("hello")\`, \`0\`), pure random characters, or plain English without syntax structure MUST be returned as \`"codeDetected": false\` with all scores set to 0. Do not treat "undeclared function" as a quality issue for a 1-line expression; reject it as non-code instead.
 - **Logic Preservation**: If you find that the user has "fixed" an issue by simply deleting a large block of functional logic, penalize the "Quality" score harshly.
 - **Intent**: A good solution optimizes the algorithm (e.g., O(N) instead of O(N^2)) while keeping the functional output the same.
-- If the code is perfectly fine or empty, return 100 for scores and an empty bugs array.
 `;
 
     const result = await model.generateContent({

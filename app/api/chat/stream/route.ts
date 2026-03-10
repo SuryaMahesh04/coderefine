@@ -100,7 +100,11 @@ Use descriptive step names relevant to what you're actually doing.
 - Use code blocks for snippets when helpful
 - Be concise but complete
 
-**Step 5 — PLAN**: If the task involves code changes (set intendsToChange: true), generate a detailed planDocument:
+**Step 5 — FLOW ANALYSIS (CRITICAL)**: If the user asks to analyze, audit, review, or fix a "flow", "workspace", "project" or any feature spanning multiple files (e.g. "analyze the auth flow"), you MUST identify the relevant files from the context and emit this signal immediately after your THOUGHT:
+- ANALYZE_WORKSPACE: {"files": ["file1.ts", "file2.tsx", "file3.js"]}
+Failure to emit this signal when multiple files are relevant is a violation of the protocol.
+
+**Step 6 — PLAN**: If the task involves code changes (set intendsToChange: true), generate a detailed planDocument:
 - Cover EVERY fix, change, and improvement needed
 - Be specific: "Function X on line Y — change Z to W because..."
 - Include ALL issues from terminal analysis if relevant
@@ -112,13 +116,15 @@ STRICT OUTPUT FORMAT — Every line must start with one of:
 THOUGHT: [one line of internal reasoning]
 STEP: {"name": "...", "status": "running|done", "summary": "..."}
 CHUNK: [one line of markdown response — use \\n between CHUNK lines for spacing]
-FINAL: {"planDocument": {"filename": "plan.md", "content": "..."}, "intendsToChange": true|false}
+ANALYZE_WORKSPACE: {"files": ["file1.ts", "file2.tsx"]}
+FINAL: {"planDocument": {"filename": "plan.md", "content": "..."}, "intendsToChange": true|false, "affectedFiles": ["file1.ts", "file2.tsx"]}
 
 Rules:
 - NEVER mix content — each line must start with exactly one prefix
 - ALWAYS emit a FINAL line at the end
-- If NO code changes needed, set intendsToChange: false and omit planDocument
+- If NO code changes needed, set intendsToChange: false, omit planDocument, and affectedFiles should be []
 - If code changes needed, planDocument content must be a complete Markdown plan
+- ONLY list files you intend to modify in affectedFiles. Do not list files you only read.
 - Plan filename should describe the task, e.g. "fix_runtime_errors.md", "add_auth_feature.md"
 `;
 
@@ -128,8 +134,21 @@ Rules:
                     });
 
                     let buffer = "";
-                    let currentSection: "THOUGHT" | "CHUNK" | "STEP" | "FINAL" | null = null;
+                    let currentSection: "THOUGHT" | "CHUNK" | "STEP" | "FINAL" | "ANALYZE_WORKSPACE" | null = null;
                     let finalAccumulator = ""; // accumulates multi-line FINAL JSON
+                    let analyzeAccumulator = ""; // accumulates multi-line ANALYZE_WORKSPACE JSON
+
+                    // Helper to flush analyze workspace
+                    const flushAnalyzeWorkspace = () => {
+                        if (analyzeAccumulator.trim()) {
+                            try {
+                                sendUpdate("ANALYZE_WORKSPACE", JSON.parse(analyzeAccumulator));
+                            } catch (e) {
+                                console.error("Failed to parse multi-line ANALYZE_WORKSPACE JSON:", analyzeAccumulator);
+                            }
+                            analyzeAccumulator = "";
+                        }
+                    };
 
                     for await (const chunk of resultStream.stream) {
                         const chunkText = chunk.text();
@@ -140,26 +159,45 @@ Rules:
 
                         for (const line of lines) {
                             if (line.startsWith("THOUGHT:")) {
+                                flushAnalyzeWorkspace();
                                 currentSection = "THOUGHT";
                                 finalAccumulator = "";
                                 sendUpdate("THOUGHT", line.replace("THOUGHT:", "").trim() + "\n");
                             } else if (line.startsWith("STEP:")) {
+                                flushAnalyzeWorkspace();
                                 currentSection = "STEP";
                                 finalAccumulator = "";
                                 try {
                                     sendUpdate("STEP", JSON.parse(line.replace("STEP:", "").trim()));
                                 } catch (e) { }
                             } else if (line.startsWith("CHUNK:")) {
+                                flushAnalyzeWorkspace();
                                 currentSection = "CHUNK";
                                 finalAccumulator = "";
                                 sendUpdate("CHUNK", line.replace("CHUNK:", "").trim() + "\n");
+                            } else if (line.startsWith("ANALYZE_WORKSPACE:")) {
+                                currentSection = "ANALYZE_WORKSPACE";
+                                finalAccumulator = "";
+                                analyzeAccumulator = line.replace("ANALYZE_WORKSPACE:", "").trim();
+                                // Try inline parse right away just in case it is one line
+                                flushAnalyzeWorkspace();
                             } else if (line.startsWith("FINAL:")) {
                                 // Start accumulating — the JSON may span multiple lines
                                 currentSection = "FINAL";
+
                                 finalAccumulator = line.replace("FINAL:", "").trim();
                             } else if (currentSection === "FINAL") {
                                 // Keep accumulating FINAL content
                                 finalAccumulator += "\n" + line;
+                            } else if (currentSection === "ANALYZE_WORKSPACE") {
+                                analyzeAccumulator += "\n" + line;
+                                // Attempt to parse aggressively so the terminal pops up ASAP
+                                if (analyzeAccumulator.trim().endsWith("}")) {
+                                    try {
+                                        JSON.parse(analyzeAccumulator); // test parse
+                                        flushAnalyzeWorkspace(); // if it works, flush it!
+                                    } catch (e) {} 
+                                }
                             } else if (currentSection === "CHUNK") {
                                 sendUpdate("CHUNK", line.trim() + "\n");
                             } else if (currentSection === "THOUGHT") {
@@ -174,12 +212,16 @@ Rules:
                         else if (buffer.startsWith("CHUNK:")) sendUpdate("CHUNK", buffer.replace("CHUNK:", "").trim() + "\n");
                         else if (buffer.startsWith("STEP:")) {
                             try { sendUpdate("STEP", JSON.parse(buffer.replace("STEP:", "").trim())); } catch (e) { }
+                        } else if (buffer.startsWith("ANALYZE_WORKSPACE:")) {
+                            try { sendUpdate("ANALYZE_WORKSPACE", JSON.parse(buffer.replace("ANALYZE_WORKSPACE:", "").trim())); } catch (e) { }
                         } else if (buffer.startsWith("FINAL:")) {
                             finalAccumulator = buffer.replace("FINAL:", "").trim();
                         } else if (currentSection === "FINAL") {
                             finalAccumulator += "\n" + buffer;
                         } else if (currentSection === "CHUNK") {
                             sendUpdate("CHUNK", buffer.trim() + "\n");
+                        } else if (currentSection === "ANALYZE_WORKSPACE") {
+                             try { sendUpdate("ANALYZE_WORKSPACE", JSON.parse(buffer.trim())); } catch (e) { }
                         }
                     }
 
@@ -191,6 +233,7 @@ Rules:
                                 chat_response: "",
                                 planDocument: finalData.planDocument,
                                 intendsToChange: finalData.intendsToChange,
+                                affectedFiles: finalData.affectedFiles || [],
                                 changes: []
                             });
                         } catch (e) {
@@ -209,10 +252,9 @@ Rules:
                 // ── EXECUTE MODE ───────────────────────────────────────────
                 else if (mode === "execute") {
                     sendUpdate("BOUNDARY", "Execution Phase");
-                    sendUpdate("STEP", { name: "Reading plan", status: "running", summary: "Parsing the implementation plan..." });
-                    sendUpdate("THOUGHT", "Starting execution phase. I will rewrite the entire file based on the plan.");
+                    sendUpdate("THOUGHT", `Starting execution phase. Rewriting ${context.targetFile} based on the plan.`);
 
-                    const rewritePrompt = `You are a SENIOR SOFTWARE ENGINEER doing a production-grade code review and rewrite. Your goal is to produce the HIGHEST QUALITY version of this file that will score 90+ on Security, Performance, and Code Quality audits.
+                    const rewritePrompt = `You are a SENIOR SOFTWARE ENGINEER doing a production-grade code review and rewrite. Your goal is to produce the HIGHEST QUALITY version of this code that will score 90+ on Security, Performance, and Code Quality audits.
 
 PLAN TO IMPLEMENT:
 ${context.plan}
@@ -232,7 +274,7 @@ YOUR JOB (in this exact order):
    - **Type safety**: Replace \`any\` types with proper types where obvious.
    - **Resource cleanup**: Ensure connections, streams, and handles are properly closed.
 3. DO NOT remove working business logic — only improve it.
-4. The rewritten file must be complete, production-ready, and have zero obvious bugs.
+4. The rewritten code must be complete, production-ready, and have zero obvious bugs.
 
 OUTPUT RULES:
 - Do NOT output any explanation, markdown fences, or code blocks.
@@ -240,10 +282,6 @@ OUTPUT RULES:
 - Then output the entire rewritten file contents and nothing else.
 
 Start now:`;
-
-                    sendUpdate("STEP", { name: "Reading plan", status: "done", summary: "Plan parsed." });
-                    sendUpdate("STEP", { name: "Rewriting file", status: "running", summary: "Applying all planned changes..." });
-                    sendUpdate("THOUGHT", "Generating the complete rewritten file with all fixes applied.");
 
                     const rewriteStream = await flashModel.generateContentStream({
                         contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
@@ -267,25 +305,21 @@ Start now:`;
                         .replace(/\r?\n?```$/, "")
                         .trim();
 
-                    sendUpdate("STEP", { name: "Rewriting file", status: "done", summary: "File rewrite complete." });
-
-                    // ── Send FINAL with the rewritten code so the frontend can apply it immediately ──
                     sendUpdate("FINAL", { rewrittenCode, changes: [] });
+                }
 
-                    // ── Second pass: stream an explanation of what was changed ──
-                    sendUpdate("STEP", { name: "Generating change summary", status: "running", summary: "Summarizing all changes made..." });
-                    sendUpdate("THOUGHT", "Now I will explain every fix I applied so the developer understands the changes.");
+                // ── POST-EXECUTION REPORT EXPLANATION ──────────────────────
+                else if (mode === "execute_summary") {
+                    sendUpdate("BOUNDARY", "Generating Summary");
 
-                    const explainPrompt = `You are a senior code reviewer. You just applied the following plan to a code file.
+                    const explainSubject = `REWRITTEN FILES:\n${(context.targetFiles || []).map((f: any) => `<file path="${f.filename}">\n${f.code}\n</file>`).join("\n\n")}`;
+
+                    const explainPrompt = `You are a senior code reviewer. You just applied the following plan to a codebase.
 
 PLAN THAT WAS APPLIED:
 ${context.plan}
 
-ORIGINAL FILE:
-${code}
-
-REWRITTEN FILE:
-${rewrittenCode}
+${explainSubject}
 
 Your job: Write a concise, developer-friendly summary of EXACTLY what changed. Format:
 - Use a header: "## ✅ Changes Applied"
@@ -293,7 +327,7 @@ Your job: Write a concise, developer-friendly summary of EXACTLY what changed. F
 - Use inline code for identifiers
 - End with a one-liner health improvement note
 
-Be specific. Do not say "I applied the plan". Name the actual functions, lines, and patterns you changed.`;
+Be specific. Do not say "I applied the plan". Name the actual files, functions, lines, and patterns you changed.`;
 
                     const explainStream = await proModel.generateContentStream({
                         contents: [{ role: "user", parts: [{ text: explainPrompt }] }],
@@ -315,9 +349,9 @@ Be specific. Do not say "I applied the plan". Name the actual functions, lines, 
 
                     sendUpdate("STEP", { name: "Generating change summary", status: "done", summary: "Summary complete." });
                     sendUpdate("EXPLAIN_DONE", "true");
-                }
-
-            } catch (error: any) {
+                } // This ends the `else if (mode === "execute") {` block
+            } // This ends the master `try {` block
+            catch (error: any) {
                 console.error("Stream Error:", error);
                 sendUpdate("ERROR", error.message || "An error occurred in the agentic loop");
             } finally {

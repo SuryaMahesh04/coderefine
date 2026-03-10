@@ -24,6 +24,8 @@ export type Message = {
     intendsToChange?: boolean;
     isAccepted?: boolean;
     isRejected?: boolean;
+    affectedFiles?: string[];
+    rewrittenFiles?: { filename: string, id?: string }[];
 };
 
 interface ChatPanelProps {
@@ -40,6 +42,7 @@ interface ChatPanelProps {
     onDetachFile: () => void;
     selectedModel: string;
     setSelectedModel: (model: string) => void;
+    onFileClick?: (id: string) => void;
 }
 
 // ─── Activity Step Component ─────────────────────────────────────────────────
@@ -190,7 +193,8 @@ export default function ChatPanel({
     onAttachFile,
     onDetachFile,
     selectedModel,
-    setSelectedModel
+    setSelectedModel,
+    onFileClick
 }: ChatPanelProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
     const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -297,6 +301,31 @@ export default function ChatPanel({
                                             </ReactMarkdown>
                                         </div>
                                     )}
+
+                                    {/* 3.5 ── Rewritten Files */}
+                                    {msg.rewrittenFiles && msg.rewrittenFiles.length > 0 && (
+                                        <div className="flex flex-col gap-1.5 mt-1">
+                                            <span className="text-[10px] text-[#4d6b5a] font-bold uppercase tracking-wider pl-1">Edited Files</span>
+                                            <div className="flex flex-wrap gap-2">
+                                                {msg.rewrittenFiles.map((file, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => file.id && onFileClick?.(file.id)}
+                                                        disabled={!file.id}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium border transition-all ${
+                                                            file.id 
+                                                                ? "bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/20 hover:bg-[#00E5FF]/20 hover:border-[#00E5FF]/40 cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.1)]" 
+                                                                : "bg-[rgba(5,5,5,0.5)] text-[#4d6b5a] border-[rgba(0,229,255,0.05)] opacity-60 cursor-not-allowed"
+                                                        }`}
+                                                    >
+                                                        <FileCode className="w-3.5 h-3.5" />
+                                                        {file.filename}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
 
                                     {/* 4 ── Action buttons */}
                                     {((msg.intendsToChange && !msg.isAccepted && !msg.isRejected) || (msg.changes && msg.changes.length > 0 && !msg.isAccepted && !msg.isRejected)) && (
