@@ -314,6 +314,38 @@ Start now:`;
 
                     const explainSubject = `REWRITTEN FILES:\n${(context.targetFiles || []).map((f: any) => `<file path="${f.filename}">\n${f.code}\n</file>`).join("\n\n")}`;
 
+                    // --- GENERATE JSON DIFF FOR HISTORY ---
+                    try {
+                        const diffPrompt = `You are an AI tracking code changes.
+Review these rewritten files:
+${explainSubject}
+
+Generate a concise JSON array of the most important edits made (max 5).
+Format EXACTLY as:
+{
+  "changes": [
+    {
+      "filename": "string",
+      "line": 1,
+      "original": "short snippet of old code (estimate)",
+      "rewritten": "short snippet of new code",
+      "reason": "why this was changed",
+      "category": "Security" 
+    }
+  ]
+}
+Output pure JSON.`;
+                        const diffResult = await flashModel.generateContent({
+                            contents: [{ role: "user", parts: [{ text: diffPrompt }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        });
+                        const diffJson = JSON.parse(diffResult.response.text());
+                        if (diffJson.changes) {
+                            sendUpdate("CHANGES", diffJson.changes);
+                        }
+                    } catch (e) { console.error("History diff generation failed", e); }
+                    // --------------------------------------
+
                     const explainPrompt = `You are a senior code reviewer. You just applied the following plan to a codebase.
 
 PLAN THAT WAS APPLIED:

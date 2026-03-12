@@ -12,6 +12,7 @@ import { analyzeCodebase } from "../actions/analyze";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import JSZip from "jszip";
 import { Download, Upload, FileUp, FolderArchive, Activity, Terminal } from "lucide-react";
+import { saveHistoryEntry, appendEditsToLatestHistory } from "../../lib/historyStore";
 
 const EXTENSION_MAP: Record<string, string> = {
   "ts": "typescript", "tsx": "typescript", "js": "javascript", "jsx": "javascript",
@@ -508,6 +509,22 @@ export default function AppLayout() {
     }
 
     setAnalysis(result);
+    setPreviousAnalysis(analysis);
+    
+    saveHistoryEntry({
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      scores: {
+        security: result?.security || 0,
+        performance: result?.performance || 0,
+        quality: result?.quality || 0,
+        overallRating: result?.overallRating || 0
+      },
+      bugs: result?.bugs || [],
+      filesAnalyzed: filesToAnalyze.map(f => f.filename),
+      appliedEdits: []
+    });
+
     setAnalyzingFile(null);
     setIsAnalyzing(false);
   };
@@ -824,6 +841,11 @@ export default function AppLayout() {
                       if (activeTabNow && activeTabNow.filename === target.filename) {
                           editorRef.current.setValue(final.rewrittenCode);
                       }
+                  }
+
+                  // Append to history
+                  if (final.changes && final.changes.length > 0) {
+                      appendEditsToLatestHistory(final.changes);
                   }
 
                 }
