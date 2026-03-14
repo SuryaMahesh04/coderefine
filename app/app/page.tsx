@@ -12,6 +12,7 @@ import { analyzeCodebase } from "../actions/analyze";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import JSZip from "jszip";
 import { Download, Upload, FileUp, FolderArchive, Activity, Terminal } from "lucide-react";
+import { saveHistoryEntry, appendEditsToLatestHistory } from "../../lib/historyStore";
 
 const EXTENSION_MAP: Record<string, string> = {
   "ts": "typescript", "tsx": "typescript", "js": "javascript", "jsx": "javascript",
@@ -293,7 +294,7 @@ export default function AppLayout() {
   useEffect(() => {
     clearDecorations();
     setPendingEdits([]);
-    
+
     // Don't clear terminal analysis if just looking at a plan
     const newTab = tabs.find(t => t.id === activeTabId);
     if (newTab?.type !== 'plan') {
@@ -469,7 +470,7 @@ export default function AppLayout() {
 
       // Extract alphanumeric "words" to avoid validating pure symbol spam
       const wordCount = (text.match(/[a-zA-Z0-9_]+/g) || []).length;
-      if (wordCount < 2) return false; 
+      if (wordCount < 2) return false;
 
       const patterns = [
         /[{}\[\]()]/, // Block delimiters
@@ -478,14 +479,14 @@ export default function AppLayout() {
         /;\s*$|:\s*$/, // Statement/Block terminators
         /<|>|@|:\s*[A-Z][a-zA-Z]+/ // Types / Decorators
       ];
-      
+
       const matchCount = patterns.filter(p => p.test(text)).length;
       return matchCount >= 2; // Needs at least 2 strong code signals to avoid single expressions
     };
 
     // Require both a valid script extension AND sufficient structural density
     const hasCode = filesToAnalyze.some(f => hasValidExtension(f.filename) && isCodeLike(f.code));
-    
+
     let result;
     if (!hasCode) {
       // Fast fail: Return a "no code" state mock without an API call
@@ -502,12 +503,28 @@ export default function AppLayout() {
       for (const file of filesToAnalyze) {
         setAnalyzingFile(file.filename);
         // Artificial delay for Antigravity-style "scanning" visual effect
-        await new Promise(r => setTimeout(r, 600)); 
+        await new Promise(r => setTimeout(r, 600));
       }
       result = await analyzeCodebase(filesToAnalyze);
     }
 
     setAnalysis(result);
+    setPreviousAnalysis(analysis);
+
+    saveHistoryEntry({
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      scores: {
+        security: result?.security || 0,
+        performance: result?.performance || 0,
+        quality: result?.quality || 0,
+        overallRating: result?.overallRating || 0
+      },
+      bugs: result?.bugs || [],
+      filesAnalyzed: filesToAnalyze.map(f => f.filename),
+      appliedEdits: []
+    });
+
     setAnalyzingFile(null);
     setIsAnalyzing(false);
   };
@@ -544,7 +561,7 @@ export default function AppLayout() {
     try {
       const allFiles = extractAllFiles(files);
       const workspaceMap = allFiles.map(f => f.filename).join(', ');
-      
+
       let codeContext = `WORKSPACE_FILES: [${workspaceMap}]\n\n`;
       if (attachedFile) {
         const node = findNodeById(files, attachedFile.id);
@@ -708,9 +725,9 @@ export default function AppLayout() {
     const targetTab = tabs.find(t => t.id === activeTabId);
 
     // If it's a single file operation, we MUST have a target tab to edit
-    if (!isMultiFile && !targetTab) { 
-        console.error("No active tab to rewrite for single file operation."); 
-        return; 
+    if (!isMultiFile && !targetTab) {
+      console.error("No active tab to rewrite for single file operation.");
+      return;
     }
 
     setIsLoading(true);
@@ -746,10 +763,10 @@ export default function AppLayout() {
         body: JSON.stringify({
           mode: "execute",
           code: targetTab?.code || "", // Initial context
-          context: { 
-            plan: msg.content, 
-            isMultiFile: true, 
-            targetFile: targetTab?.filename || "" 
+          context: {
+            plan: msg.content,
+            isMultiFile: true,
+            targetFile: targetTab?.filename || ""
           },
           selectedModel: selectedModel
         })
@@ -776,53 +793,53 @@ export default function AppLayout() {
               if (m.id !== explainMsgId) return m;
               const newSteps = [...(m.steps || [])];
               if (newSteps.length > 0) {
-                 const lastStepIdx = newSteps.length - 1;
-                 newSteps[lastStepIdx] = {
-                    ...newSteps[lastStepIdx],
-                    thoughts: [...(newSteps[lastStepIdx].thoughts || []), content]
-                 };
-                 return { ...m, steps: newSteps };
+                const lastStepIdx = newSteps.length - 1;
+                newSteps[lastStepIdx] = {
+                  ...newSteps[lastStepIdx],
+                  thoughts: [...(newSteps[lastStepIdx].thoughts || []), content]
+                };
+                return { ...m, steps: newSteps };
               } else {
-                 return { ...m, thoughts: [...(m.thoughts || []), content] };
+                return { ...m, thoughts: [...(m.thoughts || []), content] };
               }
             }));
           }
 
           // ── STEP lines (Tool Calls) ──
           if (type === "STEP") {
-             try {
-               const step = JSON.parse(content);
-               setMessages(prev => prev.map(m => {
-                 if (m.id !== explainMsgId) return m;
-                 const newSteps = [...(m.steps || [])];
-                 const existingIdx = newSteps.findIndex(s => s.name === step.name);
-                 if (existingIdx !== -1) {
-                    newSteps[existingIdx] = step;
-                 } else {
-                    newSteps.push(step);
-                 }
-                 return { ...m, steps: newSteps };
-               }));
-             } catch(e) {}
+            try {
+              const step = JSON.parse(content);
+              setMessages(prev => prev.map(m => {
+                if (m.id !== explainMsgId) return m;
+                const newSteps = [...(m.steps || [])];
+                const existingIdx = newSteps.findIndex(s => s.name === step.name);
+                if (existingIdx !== -1) {
+                  newSteps[existingIdx] = step;
+                } else {
+                  newSteps.push(step);
+                }
+                return { ...m, steps: newSteps };
+              }));
+            } catch (e) { }
           }
 
           // ── FINAL: apply the rewritten code immediately when a file is updated ──
           if (type === "FINAL") {
             try {
               const final = JSON.parse(content);
-              
+
               if (final.rewrittenCode && final.targetFile) {
                 const fileName = final.targetFile;
-                
+
                 // Track for analysis
                 analyzeFilesPayload = analyzeFilesPayload.filter(p => p.filename !== fileName);
                 analyzeFilesPayload.push({ filename: fileName, code: final.rewrittenCode });
-                
+
                 // Add to the visual display pill list if not already there
                 if (!rewrittenFilesDisplay.some(f => f.filename === fileName)) {
-                   const allFiles = extractAllFiles(files);
-                   const foundNode = allFiles.find(n => n.filename === fileName);
-                   rewrittenFilesDisplay.push({ filename: fileName, id: foundNode?.id });
+                  const allFiles = extractAllFiles(files);
+                  const foundNode = allFiles.find(n => n.filename === fileName);
+                  rewrittenFilesDisplay.push({ filename: fileName, id: foundNode?.id });
                 }
 
                 // Apply to tab state
@@ -846,10 +863,10 @@ export default function AppLayout() {
 
                 // Apply to Monaco editor instantly if it's the active tab
                 if (activeTabId && editorRef.current) {
-                    const activeTabNow = tabs.find(t => t.id === activeTabId);
-                    if (activeTabNow && activeTabNow.filename === fileName) {
-                        editorRef.current.setValue(final.rewrittenCode);
-                    }
+                  const activeTabNow = tabs.find(t => t.id === activeTabId);
+                  if (activeTabNow && activeTabNow.filename === fileName) {
+                    editorRef.current.setValue(final.rewrittenCode);
+                  }
                 }
               }
             } catch (e) { console.error("Failed to parse execute FINAL chunk:", e); }
@@ -895,34 +912,34 @@ export default function AppLayout() {
           const chunk = sumDecoder.decode(value);
           const lines = chunk.split('\n').filter(Boolean);
           for (const line of lines) {
-             if (line.match(/^\[EXPLAIN_CHUNK\](.*)/)) {
-                 const content = line.substring(15);
-                 setMessages(prev => prev.map(m =>
-                  m.id === explainMsgId ? { ...m, content: (m.content || "") + content + "\n" } : m
-                 ));
-             }
-             if (line.match(/^\[EXPLAIN_DONE\]/)) {
-                 setMessages(prev => prev.map(m => {
-                    if (m.id !== explainMsgId) return m;
-                    const newSteps = [...(m.steps || [])];
-                    const stepIdx = newSteps.findIndex(s => s.name === "Generating change summary");
-                    if (stepIdx !== -1) {
-                       newSteps[stepIdx].status = "done";
-                       newSteps[stepIdx].summary = "Finished.";
-                    }
-                    return { ...m, steps: newSteps };
-                  }));
-             }
+            if (line.match(/^\[EXPLAIN_CHUNK\](.*)/)) {
+              const content = line.substring(15);
+              setMessages(prev => prev.map(m =>
+                m.id === explainMsgId ? { ...m, content: (m.content || "") + content + "\n" } : m
+              ));
+            }
+            if (line.match(/^\[EXPLAIN_DONE\]/)) {
+              setMessages(prev => prev.map(m => {
+                if (m.id !== explainMsgId) return m;
+                const newSteps = [...(m.steps || [])];
+                const stepIdx = newSteps.findIndex(s => s.name === "Generating change summary");
+                if (stepIdx !== -1) {
+                  newSteps[stepIdx].status = "done";
+                  newSteps[stepIdx].summary = "Finished.";
+                }
+                return { ...m, steps: newSteps };
+              }));
+            }
+          }
         }
-      }
 
-      // ── TRIGGER RE-ANALYSIS USING REWRITTEN CODE ──
-      if (analyzeFilesPayload.length > 0) {
-        if (analysis) setPreviousAnalysis(analysis);
-        setTimeout(() => {
-          runAnalysis(analyzeFilesPayload);
-        }, 300);
-      }
+        // ── TRIGGER RE-ANALYSIS USING REWRITTEN CODE ──
+        if (analyzeFilesPayload.length > 0) {
+          if (analysis) setPreviousAnalysis(analysis);
+          setTimeout(() => {
+            runAnalysis(analyzeFilesPayload);
+          }, 300);
+        }
       }
     } catch (err) {
       console.error("Execution phase failed:", err);
