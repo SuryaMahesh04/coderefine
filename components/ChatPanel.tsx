@@ -8,8 +8,10 @@ import remarkGfm from 'remark-gfm';
 
 export type TaskStep = {
     name: string;
-    status: "pending" | "running" | "done";
+    status: "pending" | "running" | "done" | "error";
     summary: string;
+    thoughts?: string[];
+    diff?: { added: number, removed: number };
 };
 
 export type Message = {
@@ -46,62 +48,98 @@ interface ChatPanelProps {
 }
 
 // ─── Activity Step Component ─────────────────────────────────────────────────
-function ActivityStep({ step, isLast }: { step: TaskStep; isLast: boolean }) {
+function ActivityStep({ step, index, isLast }: { step: TaskStep; index: number; isLast: boolean }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const StepIcon = () => {
-        const s = step.name.toLowerCase();
-        const cls = "w-3 h-3";
-        if (s.includes("search") || s.includes("find") || s.includes("grep")) return <Search className={cls} />;
-        if (s.includes("edit") || s.includes("write") || s.includes("creat") || s.includes("modifi")) return <Pencil className={cls} />;
-        if (s.includes("analyz") || s.includes("view") || s.includes("read") || s.includes("inspect")) return <FileCode className={cls} />;
-        if (s.includes("plan") || s.includes("design") || s.includes("implement")) return <ClipboardList className={cls} />;
-        return <Check className={cls} />;
-    };
+    // Extract filename and language if it's an edit action (e.g., "writeFile(route.ts)")
+    const isEdit = step.name.includes("writeFile") || step.name.includes("replaceContent");
+    const filenameMatch = step.name.match(/\((.*?)\)/);
+    const filename = filenameMatch ? filenameMatch[1] : null;
+    let languageCode = "TXT";
+    if (filename) {
+        const ext = filename.split('.').pop()?.toUpperCase() || "TXT";
+        languageCode = ext === "TSX" || ext === "TS" ? "TS" : ext === "JSX" || ext === "JS" ? "JS" : ext;
+    }
 
-    const statusColor =
-        step.status === "done" ? "text-[#00C853]" :
-            step.status === "running" ? "text-[#00E5FF]" :
-                "text-[#4d6b5a]";
+    // Determine the main title text
+    let title = step.summary || step.name;
+    if (step.name.includes("readFile") || step.name.includes("runCommand") || step.name.includes("finishTask")) {
+        title = step.summary; 
+    }
 
     return (
-        <div className="flex gap-2.5 items-start relative">
-            {/* Timeline line */}
-            {!isLast && (
-                <div className="absolute left-[7px] top-5 bottom-0 w-px bg-[rgba(0,229,255,0.1)]" />
-            )}
-
-            {/* Status dot */}
-            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 z-10 ${step.status === "done"
-                    ? "bg-[rgba(0,200,83,0.15)] border-[#00C853] text-[#00C853]"
-                    : step.status === "running"
-                        ? "border-[#00E5FF] bg-[rgba(0,229,255,0.1)] animate-pulse text-[#00E5FF]"
-                        : "border-[rgba(0,229,255,0.2)] bg-transparent text-[#4d6b5a]"
-                }`}>
-                {step.status === "done" && <Check className="w-2 h-2" />}
-                {step.status === "running" && <div className="w-1.5 h-1.5 rounded-full bg-[#00E5FF]" />}
-                {step.status === "pending" && <div className="w-1.5 h-1.5 rounded-full bg-[rgba(0,229,255,0.2)]" />}
+        <div className="flex gap-4 items-start relative pb-6 group">
+            {/* Left Timeline Column */}
+            <div className="flex flex-col items-center shrink-0 w-4 h-full relative">
+                <span className="text-[10px] font-mono text-[#4d6b5a] mt-1 font-bold z-10 bg-[rgba(5,5,5,0.8)] leading-none">{index + 1}</span>
+                {!isLast && (
+                    <div className="absolute top-4 bottom-[-16px] w-px bg-[#22332a] group-hover:bg-[#334c3f] transition-colors" />
+                )}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 pb-3 min-w-0">
-                <button
-                    className="flex items-center gap-1.5 text-left w-full group"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                >
-                    <span className={`text-[11px] font-bold ${statusColor} group-hover:brightness-125 transition-all truncate`}>
-                        {step.name}
+            {/* Right Content Column */}
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+                {/* Step Title */}
+                <div className="flex items-center gap-2">
+                    <span className={`text-[13px] font-bold leading-snug transition-colors ${step.status === "error" ? "text-[#FF4081]" : "text-[#E2E8F0]"}`}>
+                        {title}
                     </span>
-                    {step.summary && (
-                        <ChevronRight className={`w-3 h-3 shrink-0 text-[#4d6b5a] transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
-                    )}
                     {step.status === "running" && (
-                        <Loader2 className="w-3 h-3 shrink-0 text-[#00E5FF] animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 text-[#00E5FF] animate-spin shrink-0" />
                     )}
-                </button>
-                {isExpanded && step.summary && (
-                    <div className="mt-1 text-[10px] text-[#86a898] animate-in slide-in-from-top-1 duration-200 leading-relaxed pr-2">
-                        {step.summary}
+                </div>
+
+                {/* File Edit Block Sub-item */}
+                {isEdit && filename && (
+                    <div className="flex items-center justify-between bg-[rgba(0,0,0,0.4)] border border-[#22332a] rounded-lg px-3 py-2 mt-1 shrink-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <FileCode className="w-4 h-4 text-[#86a898] shrink-0" />
+                            <span className="text-xs text-[#E2E8F0]">Edited</span>
+                            <span className="text-[10px] font-black tracking-wider text-[#00E5FF] -mt-0.5">{languageCode}</span>
+                            <span className="text-xs text-[#E2E8F0] font-mono truncate">{filename}</span>
+                            {step.diff && (
+                                <div className="flex items-center gap-1.5 ml-1 text-[11px] font-mono font-bold tracking-tight">
+                                    <span className="text-[#00C853]">+{step.diff.added}</span>
+                                    <span className="text-[#FF4081]">-{step.diff.removed}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="w-4 h-4 rounded hover:bg-[#22332a] flex items-center justify-center cursor-pointer transition-colors shrink-0">
+                           <Sparkles className="w-3 h-3 text-[#4d6b5a]" /> 
+                        </div>
+                    </div>
+                )}
+
+                {/* Error Block Sub-item */}
+                {step.status === "error" && (
+                    <div className="flex items-center gap-2 text-xs text-[#FF4081] bg-[rgba(255,64,129,0.1)] border border-[rgba(255,64,129,0.2)] rounded-lg px-3 py-2 mt-1">
+                        <X className="w-3.5 h-3.5" />
+                        <span>Error while executing command</span>
+                    </div>
+                )}
+
+                {/* Nested Thought Block */}
+                {step.thoughts && step.thoughts.length > 0 && (
+                    <div className="w-full mt-1">
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="flex items-center gap-2 text-[12px] text-[#86a898] hover:text-[#E2E8F0] transition-colors font-medium hover:bg-[rgba(255,255,255,0.03)] px-1 py-0.5 rounded"
+                        >
+                            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
+                            <span>Thought {step.status === "done" ? "(Finished)" : "..."}</span>
+                        </button>
+                        {isExpanded && (
+                            <div className="ml-2 mt-1 border-l-[1.5px] border-[#22332a] pl-3 py-1 animate-in slide-in-from-top-1 duration-200">
+                                <div className="space-y-2">
+                                    {step.thoughts.map((thought, i) => (
+                                        <div key={i} className="text-[12px] text-[#A0AEC0] leading-relaxed">
+                                            {thought}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -109,70 +147,40 @@ function ActivityStep({ step, isLast }: { step: TaskStep; isLast: boolean }) {
     );
 }
 
-// ─── Thought Block Component ─────────────────────────────────────────────────
-function ThoughtBlock({ thoughts, duration }: { thoughts: string[]; duration?: number }) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    return (
-        <div className="w-full">
-            <button
-                type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1.5 text-[10px] text-[#4d6b5a] hover:text-[#86a898] transition-colors font-semibold pl-1 mb-1"
-            >
-                <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
-                <span className="italic">
-                    Thought for {duration !== undefined ? `${duration}s` : "..."}
-                </span>
-            </button>
-            {isExpanded && (
-                <div className="ml-1 mb-2 border-l-2 border-[rgba(0,229,255,0.15)] pl-3 py-1 animate-in slide-in-from-top-1 duration-200">
-                    <div className="space-y-1.5">
-                        {thoughts.map((thought, i) => (
-                            <div key={i} className="text-[10px] text-[#4d6b5a] leading-relaxed italic">
-                                {thought}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
 // ─── Progress Updates (Activity Feed) ────────────────────────────────────────
 function ProgressUpdates({ steps }: { steps: TaskStep[] }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
-
-    const doneCount = steps.filter(s => s.status === "done").length;
-    const total = steps.length;
-    const isAllDone = doneCount === total && total > 0;
+    const hasRunningStep = steps.some(s => s.status === "running");
 
     return (
-        <div className="bg-[rgba(5,5,5,0.5)] border border-[rgba(0,229,255,0.08)] rounded-2xl overflow-hidden mb-2">
+        <div className="w-full bg-transparent">
             {/* Header */}
             <button
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-[rgba(0,229,255,0.03)] transition-colors text-left"
+                className="w-full flex items-center justify-between text-left pb-4 border-b border-[rgba(255,255,255,0.05)] mb-4 hover:border-[rgba(255,255,255,0.1)] transition-colors group"
                 onClick={() => setIsCollapsed(!isCollapsed)}
             >
+                <span className="text-[13px] font-bold text-[#86a898] transition-colors group-hover:text-[#E2E8F0]">
+                    Progress Updates
+                </span>
                 <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isAllDone ? "bg-[#00C853]" : "bg-[#00E5FF] animate-pulse"}`} />
-                    <span className="text-[11px] font-bold text-[#F0FFF4] uppercase tracking-widest">
-                        Progress Updates
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-[#4d6b5a] font-mono">{doneCount}/{total}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-[#4d6b5a] transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} />
+                    <span className="text-[11px] text-[#4d6b5a]">Collapse all</span>
+                    <ChevronDown className={`w-4 h-4 text-[#4d6b5a] transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} />
                 </div>
             </button>
 
             {/* Steps List */}
             {!isCollapsed && (
-                <div className="px-4 pb-4 pt-1 animate-in slide-in-from-top-2 duration-200">
+                <div className="pb-2 animate-in slide-in-from-top-2 duration-200 px-1">
                     {steps.map((step, i) => (
-                        <ActivityStep key={i} step={step} isLast={i === steps.length - 1} />
+                        <ActivityStep key={i} step={step} index={i} isLast={i === steps.length - 1} />
                     ))}
+                    
+                    {/* Live Generating indicator */}
+                    {hasRunningStep && (
+                        <div className="flex items-center gap-2 mt-4 text-[#86a898] text-xs font-medium animate-pulse">
+                            Generating<span className="tracking-[3px] -mr-[3px]">...</span>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -272,9 +280,23 @@ export default function ChatPanel({
                             {msg.role === "agent" && (
                                 <div className="flex flex-col gap-2 w-full max-w-[93%]">
 
-                                    {/* 1 ── Thought block */}
-                                    {msg.thoughts && msg.thoughts.length > 0 && (
-                                        <ThoughtBlock thoughts={msg.thoughts} duration={msg.thoughtDuration} />
+                                    {/* Unassociated thoughts (pre-planning) */}
+                                    {msg.thoughts && msg.thoughts.length > 0 && (!msg.steps || msg.steps.length === 0) && (
+                                        <div className="w-full mb-2">
+                                            <div className="flex items-center gap-2 text-[12px] text-[#86a898] font-medium px-1 py-0.5">
+                                                <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 rotate-90`} />
+                                                <span>Initial Reasoning...</span>
+                                            </div>
+                                            <div className="ml-2 mt-1 border-l-[1.5px] border-[#22332a] pl-3 py-1">
+                                                <div className="space-y-2">
+                                                    {msg.thoughts.map((thought, i) => (
+                                                        <div key={i} className="text-[12px] text-[#A0AEC0] leading-relaxed">
+                                                            {thought}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
 
                                     {/* 2 ── Progress Updates (Activity Feed) */}

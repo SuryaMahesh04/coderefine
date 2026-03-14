@@ -1,5 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest } from "next/server";
+import fs from "fs/promises";
+import path from "path";
+import { exec } from "child_process";
+import util from "util";
+
+const execPromise = util.promisify(exec);
 
 export const dynamic = "force-dynamic";
 
@@ -249,63 +255,180 @@ Rules:
 
                 }
 
-                // ── EXECUTE MODE ───────────────────────────────────────────
+                // ── EXECUTE MODE (ANTIGRAVITY UPGRADE) ──────────────────────
                 else if (mode === "execute") {
                     sendUpdate("BOUNDARY", "Execution Phase");
-                    sendUpdate("THOUGHT", `Starting execution phase. Rewriting ${context.targetFile} based on the plan.`);
+                    sendUpdate("THOUGHT", "Entering autonomous execution loop. I will now use my tools to implement the plan step-by-step.");
 
-                    const rewritePrompt = `You are a SENIOR SOFTWARE ENGINEER doing a production-grade code review and rewrite. Your goal is to produce the HIGHEST QUALITY version of this code that will score 90+ on Security, Performance, and Code Quality audits.
+                    // Define the tools available to the AI
+                    const tools: any[] = [
+                        {
+                            functionDeclarations: [
+                                {
+                                    name: "readFile",
+                                    description: "Read the full content of a file from the workspace.",
+                                    parameters: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            path: { type: "STRING", description: "Relative path to the file." }
+                                        },
+                                        required: ["path"]
+                                    }
+                                },
+                                {
+                                    name: "writeFile",
+                                    description: "Write the full content to a file (overwrites existing).",
+                                    parameters: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            path: { type: "STRING", description: "Relative path to the file." },
+                                            content: { type: "STRING", description: "Full file content." }
+                                        },
+                                        required: ["path", "content"]
+                                    }
+                                },
+                                {
+                                    name: "replaceContent",
+                                    description: "Replace a specific block of text in a file with new content. Use this for targeted edits.",
+                                    parameters: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            path: { type: "STRING", description: "Relative path to the file." },
+                                            target: { type: "STRING", description: "The exact string to replace." },
+                                            replacement: { type: "STRING", description: "The new content." }
+                                        },
+                                        required: ["path", "target", "replacement"]
+                                    }
+                                },
+                                {
+                                    name: "runCommand",
+                                    description: "Run a shell command in the workspace and see the output.",
+                                    parameters: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            command: { type: "STRING", description: "The shell command to run." }
+                                        },
+                                        required: ["command"]
+                                    }
+                                },
+                                {
+                                    name: "finishTask",
+                                    description: "Signal that the task is complete and all changes are applied.",
+                                    parameters: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            summary: { type: "STRING", description: "Brief summary of what was accomplished." }
+                                        },
+                                        required: ["summary"]
+                                    }
+                                }
+                            ]
+                        }
+                    ];
 
-PLAN TO IMPLEMENT:
+                    const agentModel = genAI.getGenerativeModel({ model: flashModelName, tools });
+                    const chat = agentModel.startChat({
+                        history: [
+                            {
+                                role: "user",
+                                parts: [{ text: `You are now in AUTONOMOUS EXECUTION MODE.
+Your task: Implement the following plan in the codebase.
+
+PLAN:
 ${context.plan}
 
-ORIGINAL FILE:
-${code}
+RULES:
+1. Work step-by-step.
+2. Use 'readFile' before editing if you're unsure of the current content.
+3. Use 'replaceContent' for targeted fixes when possible.
+4. After making changes, use 'runCommand' (like 'npm run build' or 'next lint') to verify your work.
+5. If a command fails, READ the error and FIX it immediately.
+6. When everything is perfect and verified, call 'finishTask'.
 
-YOUR JOB (in this exact order):
-1. Apply every fix described in the plan.
-2. ALSO proactively fix ALL of the following you spot in the code, even if NOT in the plan:
-   - **Null/undefined safety**: Add null checks, optional chaining, or guard clauses before accessing nested properties.
-   - **Error handling**: Every async function must have try/catch with meaningful error messages.
-   - **Security**: Remove hardcoded secrets, prevent injection attacks, validate all inputs.
-   - **Memory leaks**: Clear intervals/timeouts, close connections, avoid accumulating state.
-   - **Idempotency**: If a function can be retried, ensure it doesn't duplicate side effects.
-   - **Dead code**: Remove commented-out blocks and unreachable code.
-   - **Type safety**: Replace \`any\` types with proper types where obvious.
-   - **Resource cleanup**: Ensure connections, streams, and handles are properly closed.
-3. DO NOT remove working business logic — only improve it.
-4. The rewritten code must be complete, production-ready, and have zero obvious bugs.
-
-OUTPUT RULES:
-- Do NOT output any explanation, markdown fences, or code blocks.
-- Start with EXACTLY: REWRITTEN_FILE:
-- Then output the entire rewritten file contents and nothing else.
-
-Start now:`;
-
-                    const rewriteStream = await flashModel.generateContentStream({
-                        contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
+Start by applying the first part of the plan now.` }]
+                            }
+                        ]
                     });
 
-                    let fullOutput = "";
-                    for await (const chunk of rewriteStream.stream) {
-                        fullOutput += chunk.text();
+                    let loopCount = 0;
+                    const MAX_LOOPS = 15;
+
+                    while (loopCount < MAX_LOOPS) {
+                        loopCount++;
+                        const msgResult = await chat.sendMessage("");
+                        const call = msgResult.response.candidates?.[0].content.parts.find(p => p.functionCall);
+
+                        if (!call?.functionCall) {
+                            // The AI didn't call a tool, maybe it just responded with text. 
+                            // We should capture any thoughts and nudge it back to tools.
+                            const text = msgResult.response.text();
+                            if (text) sendUpdate("THOUGHT", text);
+                            // If it's not calling a tool and hasn't finished, we might need to nudge it or break.
+                            continue;
+                        }
+
+                        const { name, args } = call.functionCall as any;
+                        sendUpdate("STEP", { name: `${name}(${args.path || args.command || ''})`, status: "running", summary: `Executing ${name}...` });
+
+                        let toolResult: any;
+                        try {
+                            switch (name) {
+                                case "readFile": {
+                                    const fullPath = path.join(process.cwd(), args.path);
+                                    const content = await fs.readFile(fullPath, "utf-8");
+                                    toolResult = { content };
+                                    break;
+                                }
+                                case "writeFile": {
+                                    const fullPath = path.join(process.cwd(), args.path);
+                                    await fs.writeFile(fullPath, args.content, "utf-8");
+                                    sendUpdate("FINAL", { rewrittenCode: args.content, targetFile: args.path }); // Notify frontend of update
+                                    toolResult = { success: true };
+                                    break;
+                                }
+                                case "replaceContent": {
+                                    const fullPath = path.join(process.cwd(), args.path);
+                                    const content = await fs.readFile(fullPath, "utf-8");
+                                    const newContent = content.replace(args.target, args.replacement);
+                                    await fs.writeFile(fullPath, newContent, "utf-8");
+                                    sendUpdate("FINAL", { rewrittenCode: newContent, targetFile: args.path }); // Notify frontend of update
+                                    toolResult = { success: true };
+                                    break;
+                                }
+                                case "runCommand": {
+                                    try {
+                                        const { stdout, stderr } = await execPromise(args.command, { cwd: process.cwd() });
+                                        toolResult = { stdout: stdout.slice(0, 5000), stderr: stderr.slice(0, 5000) };
+                                    } catch (cmdErr: any) {
+                                        toolResult = { error: cmdErr.message, stdout: cmdErr.stdout, stderr: cmdErr.stderr };
+                                    }
+                                    break;
+                                }
+                                case "finishTask": {
+                                    sendUpdate("STEP", { name: "finishTask", status: "done", summary: args.summary });
+                                    loopCount = MAX_LOOPS; // Break the loop
+                                    toolResult = { status: "task_completed" };
+                                    break;
+                                }
+                                default:
+                                    toolResult = { error: "Unknown tool name" };
+                            }
+                        } catch (err: any) {
+                            toolResult = { error: err.message };
+                        }
+
+                        // Feed the tool result back to the AI
+                        const response = await chat.sendMessage([{
+                            functionResponse: {
+                                name,
+                                response: toolResult
+                            }
+                        }]);
+
+                        sendUpdate("STEP", { name: `${name}`, status: "done", summary: "Operation complete." });
+                        
+                        if (name === "finishTask") break;
                     }
-
-                    // Extract file content after the REWRITTEN_FILE: marker
-                    const marker = "REWRITTEN_FILE:";
-                    const markerIdx = fullOutput.indexOf(marker);
-                    let rewrittenCode = markerIdx !== -1
-                        ? fullOutput.slice(markerIdx + marker.length).trimStart()
-                        : fullOutput.trim();
-
-                    // Strip accidental markdown fencing
-                    rewrittenCode = rewrittenCode
-                        .replace(/^```[\w]*\r?\n?/, "")
-                        .replace(/\r?\n?```$/, "")
-                        .trim();
-
-                    sendUpdate("FINAL", { rewrittenCode, changes: [] });
                 }
 
                 // ── POST-EXECUTION REPORT EXPLANATION ──────────────────────

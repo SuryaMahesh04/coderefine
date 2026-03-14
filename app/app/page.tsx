@@ -739,112 +739,123 @@ export default function AppLayout() {
       let analyzeFilesPayload: { filename: string, code: string }[] = [];
       const rewrittenFilesDisplay: { filename: string, id?: string }[] = [];
 
-      // ── SEQUENTIAL AGENTIC EXECUTION LOOP ──
-      for (const target of targetFiles) {
-        
-        // Add a step indicator for this specific file
-        setMessages(prev => prev.map(m => {
-          if (m.id !== explainMsgId) return m;
-          const newSteps = [...(m.steps || [])];
-          newSteps.push({ name: `Rewriting ${target.filename}`, status: "running", summary: "Applying plan to file..." });
-          return { ...m, steps: newSteps };
-        }));
+      // ── SINGLE AUTONOMOUS EXECUTION STREAM ──
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "execute",
+          code: targetTab?.code || "", // Initial context
+          context: { 
+            plan: msg.content, 
+            isMultiFile: true, 
+            targetFile: targetTab?.filename || "" 
+          },
+          selectedModel: selectedModel
+        })
+      });
 
-        const response = await fetch("/api/chat/stream", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "execute",
-            code: target.code, // sending ONLY this single file's code
-            context: { plan: msg.content, isMultiFile: false, targetFile: target.filename }, // Force single-file mode on backend
-            selectedModel: selectedModel
-          })
-        });
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-        if (!response.body) throw new Error("No response body");
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(Boolean);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(Boolean);
+        for (const line of lines) {
+          const typeMatch = line.match(/^\[([A-Z_]+)\](.*)/);
+          if (!typeMatch) continue;
+          const [, type, content] = typeMatch;
 
-          for (const line of lines) {
-            const typeMatch = line.match(/^\[([A-Z_]+)\](.*)/);
-            if (!typeMatch) continue;
-            const [, type, content] = typeMatch;
+          // ── THOUGHT lines ──
+          if (type === "THOUGHT") {
+            setMessages(prev => prev.map(m => {
+              if (m.id !== explainMsgId) return m;
+              const newSteps = [...(m.steps || [])];
+              if (newSteps.length > 0) {
+                 const lastStepIdx = newSteps.length - 1;
+                 newSteps[lastStepIdx] = {
+                    ...newSteps[lastStepIdx],
+                    thoughts: [...(newSteps[lastStepIdx].thoughts || []), content]
+                 };
+                 return { ...m, steps: newSteps };
+              } else {
+                 return { ...m, thoughts: [...(m.thoughts || []), content] };
+              }
+            }));
+          }
 
-            // ── THOUGHT lines go into the explanation message ──
-            if (type === "THOUGHT") {
-              setMessages(prev => prev.map(m =>
-                m.id === explainMsgId ? { ...m, thoughts: [...(m.thoughts || []), content] } : m
-              ));
-            }
+          // ── STEP lines (Tool Calls) ──
+          if (type === "STEP") {
+             try {
+               const step = JSON.parse(content);
+               setMessages(prev => prev.map(m => {
+                 if (m.id !== explainMsgId) return m;
+                 const newSteps = [...(m.steps || [])];
+                 const existingIdx = newSteps.findIndex(s => s.name === step.name);
+                 if (existingIdx !== -1) {
+                    newSteps[existingIdx] = step;
+                 } else {
+                    newSteps.push(step);
+                 }
+                 return { ...m, steps: newSteps };
+               }));
+             } catch(e) {}
+          }
 
-            // ── FINAL: apply the rewritten code immediately ──
-            if (type === "FINAL") {
-              try {
-                const final = JSON.parse(content);
+          // ── FINAL: apply the rewritten code immediately when a file is updated ──
+          if (type === "FINAL") {
+            try {
+              const final = JSON.parse(content);
+              
+              if (final.rewrittenCode && final.targetFile) {
+                const fileName = final.targetFile;
                 
-                if (final.rewrittenCode) {
-                  analyzeFilesPayload.push({ filename: target.filename, code: final.rewrittenCode });
-                  
-                  // Add to the visual display pill list
-                  let foundId = target.id;
-                  if (!foundId) {
-                     const foundNode = extractAllFiles(files).find(n => n.filename === target.filename);
-                     foundId = foundNode?.id;
-                  }
-                  rewrittenFilesDisplay.push({ filename: target.filename, id: foundId });
-
-                  // Apply to tab state
-                  setTabs(prev => prev.map(t =>
-                    t.filename === target.filename ? { ...t, code: final.rewrittenCode } : t
-                  ));
-
-                  // Apply to Virtual File Tree
-                  setFiles(prev => {
-                    const updateNode = (nodes: FileNode[]): FileNode[] => {
-                      return nodes.map(node => {
-                        if (node.type === "file" && node.name === target.filename) {
-                          return { ...node, content: final.rewrittenCode };
-                        }
-                        if (node.children) return { ...node, children: updateNode(node.children) };
-                        return node;
-                      });
-                    };
-                    return updateNode(prev);
-                  });
-
-                  // Apply to Monaco editor instantly if it's the active tab
-                  if (activeTabId && editorRef.current) {
-                      const activeTabNow = tabs.find(t => t.id === activeTabId);
-                      if (activeTabNow && activeTabNow.filename === target.filename) {
-                          editorRef.current.setValue(final.rewrittenCode);
-                      }
-                  }
-
+                // Track for analysis
+                analyzeFilesPayload = analyzeFilesPayload.filter(p => p.filename !== fileName);
+                analyzeFilesPayload.push({ filename: fileName, code: final.rewrittenCode });
+                
+                // Add to the visual display pill list if not already there
+                if (!rewrittenFilesDisplay.some(f => f.filename === fileName)) {
+                   const allFiles = extractAllFiles(files);
+                   const foundNode = allFiles.find(n => n.filename === fileName);
+                   rewrittenFilesDisplay.push({ filename: fileName, id: foundNode?.id });
                 }
-              } catch (e) { console.error("Failed to parse execute FINAL:", e); }
-            }
-          }
-        } // end stream inner loop
 
-        // Mark this file's step as done
-        setMessages(prev => prev.map(m => {
-          if (m.id !== explainMsgId) return m;
-          const newSteps = [...(m.steps || [])];
-          const stepIdx = newSteps.findIndex(s => s.name === `Rewriting ${target.filename}`);
-          if (stepIdx !== -1) {
-             newSteps[stepIdx].status = "done";
-             newSteps[stepIdx].summary = "Done";
-          }
-          return { ...m, steps: newSteps };
-        }));
+                // Apply to tab state
+                setTabs(prev => prev.map(t =>
+                  t.filename === fileName ? { ...t, code: final.rewrittenCode } : t
+                ));
 
-      } // end targetFiles loop
+                // Apply to Virtual File Tree
+                setFiles(prev => {
+                  const updateNode = (nodes: FileNode[]): FileNode[] => {
+                    return nodes.map(node => {
+                      if (node.type === "file" && node.name === fileName) {
+                        return { ...node, content: final.rewrittenCode };
+                      }
+                      if (node.children) return { ...node, children: updateNode(node.children) };
+                      return node;
+                    });
+                  };
+                  return updateNode(prev);
+                });
+
+                // Apply to Monaco editor instantly if it's the active tab
+                if (activeTabId && editorRef.current) {
+                    const activeTabNow = tabs.find(t => t.id === activeTabId);
+                    if (activeTabNow && activeTabNow.filename === fileName) {
+                        editorRef.current.setValue(final.rewrittenCode);
+                    }
+                }
+              }
+            } catch (e) { console.error("Failed to parse execute FINAL chunk:", e); }
+          }
+        }
+      } // end stream loop
 
       // ── MARK MESSAGE ACCEPTED AND SHOW FILES ──
       setMessages(prev => prev.map(m => {
