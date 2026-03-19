@@ -138,16 +138,18 @@ export default function FileExplorer({
                                     if (node.type === "file") onFileSelect(node.id);
                                     if (node.type === "folder") onToggleFolder(node.id, !node.isOpen);
                                 }}
-                                className={`flex items-center gap-2 py-1.5 px-2 rounded-sm cursor-pointer text-sm transition-colors group/item ${isActiveFile ? "bg-[rgba(0,229,255,0.1)] text-[#00E5FF] font-bold border-l-[3px] border-[#00E5FF] -ml-[3px]" :
-                                    isSelected ? "bg-[#111111] text-[#F0FFF4]" :
-                                        "text-[#86a898] hover:bg-[#111111] hover:text-[#00E5FF]"
+                                className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-[12px] transition-all group/item relative ${isActiveFile 
+                                    ? "bg-[var(--brand)]/10 text-[var(--brand)] font-semibold" 
+                                    : isSelected 
+                                        ? "bg-white/5 text-text-primary" 
+                                        : "text-text-muted hover:bg-white/[0.03] hover:text-text-secondary"
                                     }`}
                                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                             >
                                 {node.type === "folder" ? (
                                     <>
-                                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${node.isOpen ? "rotate-90" : ""}`} />
-                                        <Folder className="w-4 h-4 text-[#005C2E]" fill="currentColor" />
+                                        <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${node.isOpen ? "rotate-90 opacity-100" : "opacity-40"}`} />
+                                        <Folder className={`w-4 h-4 transition-colors ${node.isOpen ? "text-[var(--brand)] fill-[var(--brand)]/10" : "text-text-muted opacity-60"}`} />
                                     </>
                                 ) : (
                                     <>
@@ -255,31 +257,33 @@ export default function FileExplorer({
 
     return (
         <div
-            className="w-64 bg-[#000000] border-r border-[rgba(0,229,255,0.1)] h-full flex flex-col shrink-0 flex-shrink-0 relative z-10"
-            onClick={() => onContextSelect(null)} // Click empty space to deselect
+            className="w-full h-full bg-[#050507] flex flex-col relative z-10 select-none border-r border-border/20"
+            onClick={() => onContextSelect(null)}
         >
-            <div className="h-14 flex items-center px-4 justify-between border-b border-[rgba(0,229,255,0.15)] bg-[rgba(5,5,5,0.8)] shrink-0">
-                <span className="text-[10px] font-display font-black text-[#00E5FF] uppercase tracking-widest drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]">Explorer</span>
-                <div className="flex items-center gap-1">
+            <div className="h-10 flex items-center px-4 justify-between border-b border-border/50 bg-[#0a0a0c] shrink-0">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-80">Explorer</span>
+                </div>
+                <div className="flex items-center gap-0.5">
                     <button
                         onClick={(e) => { e.stopPropagation(); setCreatingType("file"); }}
-                        className="p-1 text-[#4d6b5a] hover:text-[#00E5FF] hover:bg-[rgba(0,229,255,0.15)] rounded transition-colors"
+                        className="p-1.5 text-text-muted hover:text-[var(--brand)] hover:bg-white/5 rounded-md transition-all active:scale-95"
                         title="New File"
                     >
-                        <FilePlus className="w-4 h-4" />
+                        <FilePlus className="w-3.5 h-3.5" />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); setCreatingType("folder"); }}
-                        className="p-1 text-[#4d6b5a] hover:text-[#00E5FF] hover:bg-[rgba(0,229,255,0.15)] rounded transition-colors"
+                        className="p-1.5 text-text-muted hover:text-[var(--brand)] hover:bg-white/5 rounded-md transition-all active:scale-95"
                         title="New Folder"
                     >
-                        <FolderPlus className="w-4 h-4" />
+                        <FolderPlus className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
-                {/* Render creation input at root if no folder is selected (or root is selected) */}
+                {/* Render creation input at root */}
                 {!selectedContextId && creatingType && (
                     <CreationInput depth={0} />
                 )}

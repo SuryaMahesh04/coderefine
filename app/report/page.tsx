@@ -36,7 +36,7 @@ export default function ReportPage() {
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(24);
             doc.setFont("helvetica", "bold");
-            doc.text("CodeRefine Enterprise Report", 15, 25);
+            doc.text("Loom AI Enterprise Report", 15, 25);
             
             doc.setFontSize(10);
             doc.setTextColor(200, 200, 200);
@@ -120,7 +120,7 @@ export default function ReportPage() {
                 });
             }
 
-            doc.save(`CodeRefine_Report_${latest.id}.pdf`);
+            doc.save(`Loom_AI_Report_${latest.id}.pdf`);
         } catch (error) {
             console.error("PDF generation failed", error);
             alert("Failed to generate PDF. Check console for details.");

@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "test_methods.ts", "test_ratelimit.ts", "verify_usage.ts"]
 }

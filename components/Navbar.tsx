@@ -1,11 +1,13 @@
-"use client";
-
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Moon, Sun } from "@phosphor-icons/react";
+import { Moon, Sun, ShieldCheck, BugBeetle, Code, Rocket } from "@phosphor-icons/react";
+import LoomLogo from "./LoomLogo";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { User, LayoutDashboard } from "lucide-react";
 
 export function Navbar() {
+    const { data: session, status } = useSession();
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
@@ -42,23 +44,21 @@ export function Navbar() {
                     <div className="flex items-center gap-10">
                         {/* Logo */}
                         <Link href="/" className="flex items-center gap-2.5 group">
-                            <div className="w-6 h-6 rounded-full gradient-sphere flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.4)] group-hover:shadow-[0_0_25px_rgba(0,229,255,0.6)] transition-all">
-                                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_5px_white]" />
-                            </div>
-                            <span className="text-lg font-display font-bold tracking-tight text-[var(--text-primary)]">
-                                CodeRefine<span className="text-[var(--brand)]">.</span>
-                            </span>
+                            <LoomLogo size={42} showText={true} />
                         </Link>
 
                         {/* Desktop Navigation */}
                         <div className="hidden lg:flex items-center h-full gap-2">
-                            <Link href="#features" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
+                            <Link href="/pricing" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
+                                Pricing
+                            </Link>
+                            <Link href="/features" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
                                 Features
                             </Link>
-                            <Link href="#engine" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
+                            <Link href="/ai-engine" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
                                 AI Engine
                             </Link>
-                            <Link href="#enterprise" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
+                            <Link href="/enterprise" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-3 py-1.5 rounded-md hover:bg-[var(--surface-raised)]">
                                 Enterprise
                             </Link>
                         </div>
@@ -66,16 +66,36 @@ export function Navbar() {
 
                     {/* Right side Actions */}
                     <div className="flex items-center gap-3">
-
-
-                        <Link href="/login" className="hidden sm:block text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors ml-2">
-                            Log in
-                        </Link>
-                        <Link href="/app">
-                            <button className="h-8 px-4 ml-2 rounded-md text-sm font-bold bg-gradient-to-r from-[#00C853] to-[#00E5FF] hover:brightness-110 text-[#000000] transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)]">
-                                Try Sandbox
-                            </button>
-                        </Link>
+                        {status === "loading" ? (
+                            <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+                        ) : status === "authenticated" && session?.user ? (
+                            <div className="flex items-center gap-4">
+                                <Link href="/dashboard" className="hidden sm:flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[#00E5FF] transition-colors">
+                                    <LayoutDashboard className="w-4 h-4" />
+                                    Dashboard
+                                </Link>
+                                <Link href="/dashboard" className="w-8 h-8 rounded-full overflow-hidden border border-white/10 hover:border-[#00E5FF] transition-colors">
+                                    {session.user.image ? (
+                                        <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                            <User className="w-4 h-4 text-zinc-400" />
+                                        </div>
+                                    )}
+                                </Link>
+                            </div>
+                        ) : (
+                            <>
+                                <Link href="/login" className="hidden sm:block text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors ml-2">
+                                    Log in
+                                </Link>
+                                <Link href="/app">
+                                    <button className="h-8 px-4 ml-2 rounded-md text-sm font-bold bg-gradient-to-r from-[#00C853] to-[#00E5FF] hover:brightness-110 text-[#000000] transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                                        Try Sandbox
+                                    </button>
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

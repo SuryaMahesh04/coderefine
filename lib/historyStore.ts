@@ -35,7 +35,10 @@ export function getHistory(): AnalysisHistoryEntry[] {
     if (typeof window === 'undefined') return [];
     try {
         const data = localStorage.getItem(STORAGE_KEY);
-        if (data) return JSON.parse(data);
+        if (data) {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+        }
     } catch (e) {
         console.error("Failed to parse history", e);
     }
