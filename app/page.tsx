@@ -145,9 +145,9 @@ export default function LandingPage() {
         <div className="mt-32 max-w-[1200px] mx-auto px-6 border-y border-[#FFFFFF]/5 py-8 bg-[#000000]/40 backdrop-blur-sm">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-[#FFFFFF]/5">
             {[
-              { label: "Lines Analyzed", val: "250M+", color: "text-white" },
-              { label: "Vulnerabilities Patched", val: "1.4M", color: "text-[#00E5FF]" },
-              { label: "Avg. Review Time", val: "<400ms", color: "text-[#00C853]" },
+              { label: "Lines Analyzed", val: "2500+", color: "text-white" },
+              { label: "Vulnerabilities Patched", val: "150", color: "text-[#00E5FF]" },
+              { label: "Avg. Review Time", val: "<500ms", color: "text-[#00C853]" },
               { label: "Compliance", val: "SOC2 Type II", color: "text-[#86a898]" },
             ].map((stat, i) => (
               <div key={i} className={`flex flex-col items-center justify-center ${i === 0 ? 'pl-0' : 'pl-8'}`}>
