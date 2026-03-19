@@ -12,6 +12,8 @@ interface SidebarProps {
   onToggleExplorer?: () => void;
 }
 
+import LoomLogo from "./LoomLogo";
+
 export default function Sidebar({ explorerOpen = false, onToggleExplorer }: SidebarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
@@ -72,57 +74,56 @@ export default function Sidebar({ explorerOpen = false, onToggleExplorer }: Side
   ];
 
   return (
-    <div className="w-14 flex-shrink-0 bg-[#000000] border-r border-[rgba(0,229,255,0.1)] h-screen flex flex-col relative z-20 items-center py-3">
+    <div className="w-[52px] flex-shrink-0 bg-[#050507] border-r border-border/20 h-screen flex flex-col relative z-20 items-center py-4 select-none">
       {/* Brand Icon (Top) */}
-      <Link href="/" className="mb-8 group relative w-10 h-10 flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full gradient-sphere flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.4)] group-hover:shadow-[0_0_20px_rgba(0,229,255,0.6)] transition-all">
-          <div className="w-2 h-2 bg-white rounded-full shadow-[0_0_8px_white]" />
-        </div>
+      <Link href="/" className="mb-8 group relative w-9 h-9 flex items-center justify-center">
+        <LoomLogo size={34} />
       </Link>
 
       {/* Navigation Icons */}
-      <nav className="flex-1 flex flex-col gap-3 w-full items-center">
+      <nav className="flex-1 flex flex-col gap-5 w-full items-center">
         {navItems.map((item) => {
-          const content = (
-            <div className={`relative flex flex-col items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 group ${item.isActive ? "text-[#00E5FF]" : "text-[#4d6b5a] hover:text-[#00C853]"}`}>
-              {item.isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-[#00E5FF] to-[#00C853] rounded-r-full shadow-[0_0_15px_rgba(0,229,255,0.5)]" />
-              )}
-              {item.icon}
+          return (
+            <div key={item.name} className="w-full flex justify-center group relative">
+               {item.onClick ? (
+                 <button 
+                  onClick={item.onClick}
+                  className={`relative flex flex-col items-center justify-center w-9 h-9 rounded-lg transition-all duration-300 ${item.isActive ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-text-muted hover:text-text-primary hover:bg-white/5"}`}
+                 >
+                   {item.isActive && (
+                     <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--brand)] rounded-r-full shadow-[0_0_15px_rgba(0,229,255,0.8)] z-30" />
+                   )}
+                   {item.icon}
+                 </button>
+               ) : (
+                 <Link 
+                  href={item.path}
+                  className={`relative flex flex-col items-center justify-center w-9 h-9 rounded-lg transition-all duration-300 ${item.isActive ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-text-muted hover:text-text-primary hover:bg-white/5"}`}
+                 >
+                   {item.isActive && (
+                     <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--brand)] rounded-r-full shadow-[0_0_15px_rgba(0,229,255,0.8)] z-30" />
+                   )}
+                   {item.icon}
+                 </Link>
+               )}
 
               {/* Tooltip */}
-              <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
+              <div className="absolute left-[58px] top-1/2 -translate-y-1/2 bg-[#0a0a0c] text-text-primary text-[11px] font-bold px-3 py-1.5 rounded-md border border-border/80 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-[100] shadow-[0_10px_30px_rgba(0,0,0,0.5)] translate-x-[-4px] group-hover:translate-x-0">
                 {item.name}
               </div>
             </div>
-          );
-
-          if (item.onClick) {
-            return (
-              <button key={item.name} onClick={item.onClick} className="focus:outline-none w-full flex justify-center">
-                {content}
-              </button>
-            );
-          }
-
-          return (
-            <Link key={item.path} href={item.path} className="w-full flex justify-center">
-              {content}
-            </Link>
           );
         })}
       </nav>
 
       {/* Bottom Buttons */}
-      <div className="mt-auto w-full flex flex-col items-center gap-3 pb-2">
-
-        <button className="relative flex items-center justify-center w-10 h-10 rounded-xl text-[#4d6b5a] hover:text-[#00C853] hover:bg-[rgba(0,200,83,0.05)] transition-colors group">
+      <div className="mt-auto w-full flex flex-col items-center gap-4 pb-4">
+        <Link href="/settings" className="relative flex items-center justify-center w-9 h-9 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/5 transition-all group">
           <Settings className="w-5 h-5" />
-          {/* Tooltip */}
-          <div className="absolute left-14 bg-[#141420] text-[#F0FFF4] text-xs font-medium px-2.5 py-1.5 rounded-md border border-[rgba(0,200,83,0.15)] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">
+          <div className="absolute left-[58px] top-1/2 -translate-y-1/2 bg-[#0a0a0c] text-text-primary text-[11px] font-bold px-3 py-1.5 rounded-md border border-border/80 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 whitespace-nowrap z-[100] shadow-[0_10px_30px_rgba(0,0,0,0.5)] translate-x-[-4px] group-hover:translate-x-0">
             Settings
           </div>
-        </button>
+        </Link>
       </div>
     </div>
   );

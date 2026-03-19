@@ -2,11 +2,12 @@
 
 import { Navbar } from "../components/Navbar";
 import {
-  ArrowRight, Sparkle, Robot, Code, ShieldCheck, BugBeetle,
-  CheckCircle, ArrowUpRight, Desktop, Users, ChartBar
+  ArrowRight, ShieldCheck, Desktop, CheckCircle, ChartBar, Robot, FileArchive
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import LoomLogo from "../components/LoomLogo";
+import { GridScan } from "../components/GridScan";
 
 // ── Mini UI Mockups (pure JSX) ──────────────────────────────
 
@@ -17,7 +18,7 @@ function InlineEditMockup() {
         <div className="w-2.5 h-2.5 rounded-full bg-[#f85149]" />
         <div className="w-2.5 h-2.5 rounded-full bg-[#e3b341]" />
         <div className="w-2.5 h-2.5 rounded-full bg-[#00E5FF]" />
-        <span className="ml-3 text-xs font-mono text-[#86a898]">auth_controller.ts — CodeRefine</span>
+        <span className="ml-3 text-xs font-mono text-[#86a898]">auth_controller.ts — Loom AI</span>
       </div>
       <div className="grid grid-cols-5 h-[280px]">
         {/* Code panel */}
@@ -64,294 +65,228 @@ function InlineEditMockup() {
   );
 }
 
-function SecurityDashboardMockup() {
-  return (
-    <div className="bg-[#000000] rounded-xl border border-[rgba(0,229,255,0.15)] shadow-[0_20px_40px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col h-[280px]">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[rgba(0,229,255,0.15)] bg-[rgba(10,10,10,0.8)] backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gradient-sphere flex items-center justify-center shadow-[0_0_15px_rgba(0,229,255,0.4)]">
-            <ShieldCheck size={16} weight="bold" className="text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]" />
-          </div>
-          <div>
-            <div className="text-xs font-display font-bold text-[#F0FFF4]">Security War-Room</div>
-            <div className="text-[10px] text-[#86a898]">Real-time vulnerability metrics</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold bg-[rgba(0,200,83,0.1)] text-[#00C853] border border-[rgba(0,200,83,0.3)] px-2 py-0.5 rounded shadow-[0_0_8px_rgba(0,200,83,0.15)]">System Secure</span>
-        </div>
-      </div>
-      <div className="p-5 grid grid-cols-4 gap-4 bg-[rgba(5,5,7,0.5)] flex-1 content-start relative">
-        <div className="absolute right-0 bottom-0 w-64 h-64 bg-[#00C853] opacity-[0.03] blur-[40px] pointer-events-none rounded-tl-full" />
-        <div className="col-span-4 grid grid-cols-3 gap-3 relative z-10">
-          <div className="glass-card p-3 rounded-xl flex flex-col">
-            <div className="text-2xl font-mono text-[#39FF7F] font-bold mb-1 tracking-tighter drop-shadow-[0_0_5px_rgba(57,255,127,0.5)]">A+</div>
-            <div className="text-[9px] text-[#86a898] uppercase tracking-widest font-bold">Code Rating</div>
-          </div>
-          <div className="glass-card p-3 rounded-xl">
-            <div className="text-xl font-mono text-[#F0FFF4] font-bold mb-1">1,204</div>
-            <div className="text-[9px] text-[#86a898] uppercase tracking-widest font-bold">Bugs Fixed</div>
-          </div>
-          <div className="glass-card p-3 rounded-xl">
-            <div className="text-xl font-mono text-[#00C853] font-bold mb-1">12ms</div>
-            <div className="text-[9px] text-[#86a898] uppercase tracking-widest font-bold">Response</div>
-          </div>
-        </div>
-        <div className="col-span-4 mt-2 relative z-10">
-          <div className="text-[10px] text-[#4d6b5a] mb-2 font-display font-bold uppercase tracking-wider">Recent Enterprise Interventions</div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-[10px] p-2 bg-[rgba(10,10,15,0.6)] rounded border border-[rgba(0,200,83,0.08)]">
-              <span className="font-semibold text-[#F0FFF4] flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#f85149] shadow-[0_0_5px_#f85149]"></span>SQL Injection</span>
-              <span className="text-[#00C853] font-mono">Auto-Patched</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px] p-2 bg-[rgba(10,10,15,0.6)] rounded border border-[rgba(0,200,83,0.08)]">
-              <span className="font-semibold text-[#F0FFF4] flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#e3b341] shadow-[0_0_5px_#e3b341]"></span>O(N²) Loop</span>
-              <span className="text-[#39FF7F] font-mono">Optimized</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Feature Showcase Data ──────────────────────────────────────────────────────
-const features = [
-  {
-    id: "copilot",
-    badge: "AI-Powered",
-    title: "Autonomous AI Copilot — finds bugs before your users do.",
-    description:
-      "Our dual-model AI agent never just reads your code. It aggressively hunts for vulnerabilities, performance bottlenecks, and logical errors. It then writes the fix directly into your editor, explaining exactly why.",
-    bullets: [
-      "Inline edits executed directly on your codebase",
-      "Explainable AI justifications for every line changed",
-      "Seamlessly integrated inside the browser IDE",
-    ],
-    mockup: <InlineEditMockup />,
-    bg: "bg-[#0a0a0f]",
-    accent: "text-[#00C853]",
-    badgeCls: "bg-[rgba(0,200,83,0.1)] text-[#00C853] border-[rgba(0,200,83,0.3)] shadow-[0_0_10px_rgba(0,200,83,0.2)]",
-    reverse: false,
-  },
-  {
-    id: "security",
-    badge: "Enterprise Security",
-    title: "Security War-Room — OWASP auditing out of the box.",
-    description:
-      "Engineers don't always have time to run SAST tools. CodeRefine runs enterprise-grade security checks in the background, identifying SQL injections, XSS, and hardcoded secrets live as you type.",
-    bullets: [
-      "Continuous OWASP Top-10 monitoring",
-      "Executive security scoring and reports",
-      "Exportable PDF reports for compliance",
-    ],
-    mockup: <SecurityDashboardMockup />,
-    bg: "bg-[#000000]",
-    accent: "text-[#00E5FF]",
-    badgeCls: "bg-[rgba(0,229,255,0.1)] text-[#00E5FF] border-[rgba(0,229,255,0.3)] shadow-[0_0_10px_rgba(0,229,255,0.2)]",
-    reverse: true,
-  },
-];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[var(--surface-muted)] text-[var(--text-primary)] font-sans overflow-x-hidden overflow-y-auto">
+    <div className="min-h-screen bg-[#000000] text-[#F0FFF4] font-sans selection:bg-[#00E5FF] selection:text-[#000000] overflow-x-hidden overflow-y-auto relative">
       <Navbar />
 
-      <main className="pt-28 pb-20">
+      <main className="relative pt-32 pb-24 z-10 w-full">
+        {/* Dynamic Grid Scan Background */}
+        <div className="absolute top-0 left-0 w-full h-[1000px] -z-10 opacity-80">
+          <GridScan
+            gridScale={0.15}
+            lineThickness={1.5}
+            linesColor="#00E5FF"
+            scanColor="#00C853"
+            scanOpacity={0.4}
+            lineJitter={0.05}
+            bloomIntensity={0.6}
+            enablePost={true}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#000000]/50 to-[#000000]" />
+        </div>
 
         {/* ── HERO ──────────────────────────────────────────────────────────── */}
-        <section className="px-4 max-w-4xl mx-auto flex flex-col items-center text-center pt-8 relative">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[radial-gradient(circle_at_center,rgba(0,200,83,0.15)_0%,transparent_70%)] pointer-events-none -z-10" />
-
+        <section className="px-6 max-w-[1200px] mx-auto flex flex-col items-center text-center pt-10 relative">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="flex flex-col items-center w-full relative z-10"
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col items-center w-full max-w-4xl"
           >
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[rgba(0,200,83,0.05)] border border-[rgba(0,200,83,0.2)] text-[#F0FFF4] text-xs font-bold mb-8 shadow-[0_0_15px_rgba(0,200,83,0.1)]">
-              <Sparkle size={14} weight="fill" className="text-[#00C853]" />
-              CodeRefine 1.0 is live
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#FFFFFF]/5 border border-[#FFFFFF]/10 text-[#86a898] text-[11px] font-bold mb-8 shadow-sm backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-[#00E5FF] shadow-[0_0_8px_#00E5FF] animate-pulse"></span>
+              LOOM AI ENTERPRISE 1.0 IS NOW PUBLIC
             </div>
 
-            <div className="relative mb-6">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 gradient-sphere opacity-50 blur-[40px] -z-10" />
-              <h1 className="text-5xl md:text-7xl font-display font-black tracking-tighter leading-[1.05] text-[#F0FFF4] drop-shadow-2xl">
-                The AI Review Platform{" "}
-                <br className="hidden md:block" />
-                <span className="text-gradient-green relative">
-                  Your Codebase
-                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-[#00C853]/30" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="3" fill="none" /></svg>
-                </span>{" "}
-                Deserves.
-              </h1>
-            </div>
+            <h1 className="text-6xl md:text-[88px] font-display font-black tracking-tighter leading-[0.95] text-white drop-shadow-2xl mb-8">
+              Code review,{" "}
+              <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00E5FF] via-[#00C853] to-[#39FF7F]">
+                autonomous.
+              </span>
+            </h1>
 
-            <p className="text-[17px] text-[#86a898] max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-              Stop copying and pasting into ChatGPT. CodeRefine lives inside your editor, autonomously finding bugs, fixing vulnerabilities, and writing O(1) optimizations inline.
+            <p className="text-[19px] md:text-[22px] text-[#86a898] max-w-2xl mx-auto mb-12 leading-relaxed font-medium tracking-tight">
+              An enterprise-grade AI engineer that lives in your workspace. It hunts vulnerabilities, rewrites O(N²) loops, and ships pristine code while you sleep.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
               <Link href="/app" className="w-full sm:w-auto">
-                <button className="w-full h-12 px-8 rounded-xl text-sm font-bold bg-gradient-to-r from-[#00C853] to-[#00E5FF] text-[#000000] hover:brightness-110 transition-all shadow-[0_0_20px_rgba(0,229,255,0.4)] flex items-center justify-center gap-2">
-                  Test the Sandbox <ArrowRight size={16} weight="bold" />
+                <button className="w-full h-14 px-8 rounded-2xl text-sm font-black bg-white text-black hover:bg-[#F0FFF4] hover:scale-[1.02] transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2">
+                  Launch Sandbox <ArrowRight size={16} weight="bold" />
                 </button>
               </Link>
-              <Link href="#features" className="w-full sm:w-auto">
-                <button className="w-full h-12 px-8 rounded-xl text-sm font-bold bg-transparent text-[#F0FFF4] border border-[rgba(0,200,83,0.3)] hover:bg-[rgba(0,200,83,0.05)] hover:border-[#00C853] transition-all flex items-center justify-center">
-                  View Engine
+              <Link href="/login" className="w-full sm:w-auto">
+                <button className="w-full h-14 px-8 rounded-2xl text-sm font-bold bg-[#FFFFFF]/5 text-white border border-[#FFFFFF]/10 hover:bg-[#FFFFFF]/10 transition-all flex items-center justify-center">
+                  Book A Demo
                 </button>
               </Link>
             </div>
           </motion.div>
+
+          {/* Inline Hero Mockup */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            className="w-full max-w-[1000px] mt-20 relative"
+          >
+            <div className="absolute -inset-1 bg-gradient-to-b from-[rgba(0,229,255,0.2)] to-[rgba(0,200,83,0.05)] rounded-[24px] blur-xl opacity-50" />
+            <div className="rounded-[20px] overflow-hidden border border-[#FFFFFF]/10 shadow-[0_40px_80px_rgba(0,0,0,0.8)] relative bg-black/50 backdrop-blur-xl">
+              <InlineEditMockup />
+            </div>
+          </motion.div>
         </section>
 
-        {/* ── TRUST BAR ─────────────────────────────────────────────────────── */}
-        <div className="mt-28 border-y border-[rgba(0,229,255,0.15)] py-6 bg-[rgba(5,5,5,0.5)] relative overflow-hidden">
-          <div className="absolute left-0 top-0 w-32 h-full bg-gradient-to-r from-[#000000] to-transparent z-10" />
-          <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-[#000000] to-transparent z-10" />
-          <div className="max-w-screen-xl mx-auto px-4 flex flex-wrap justify-center gap-x-12 gap-y-6 text-xs font-bold text-[#86a898] relative z-0">
+        {/* ── METRICS / TRUST BAR ─────────────────────────────────────────── */}
+        <div className="mt-32 max-w-[1200px] mx-auto px-6 border-y border-[#FFFFFF]/5 py-8 bg-[#000000]/40 backdrop-blur-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-[#FFFFFF]/5">
             {[
-              { icon: <Code size={18} />, text: "12+ Languages", val: "12+" },
-              { icon: <BugBeetle size={18} />, text: "Lines Analyzed", val: "10M+" },
-              { icon: <ShieldCheck size={18} />, text: "SOC2 Ready", val: "100%" },
-              { icon: <Users size={18} />, text: "Built for Teams", val: "24/7" },
-            ].map(({ icon, text, val }) => (
-              <div key={text} className="flex items-center gap-3 filter grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all cursor-default group">
-                <div className="flex items-center gap-1 text-[#00E5FF] group-hover:drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]">
-                  {icon}
-                  <span className="font-mono text-sm">{val}</span>
+              { label: "Lines Analyzed", val: "250M+", color: "text-white" },
+              { label: "Vulnerabilities Patched", val: "1.4M", color: "text-[#00E5FF]" },
+              { label: "Avg. Review Time", val: "<400ms", color: "text-[#00C853]" },
+              { label: "Compliance", val: "SOC2 Type II", color: "text-[#86a898]" },
+            ].map((stat, i) => (
+              <div key={i} className={`flex flex-col items-center justify-center ${i === 0 ? 'pl-0' : 'pl-8'}`}>
+                <div className={`text-3xl md:text-4xl font-display font-black tracking-tighter mb-1 ${stat.color}`}>
+                  {stat.val}
                 </div>
-                <span className="uppercase tracking-widest text-[10px]">{text}</span>
+                <div className="text-[11px] font-bold text-[#86a898] uppercase tracking-widest">
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── QUICK FEATURE OVERVIEW ─────────────────────────────────────────── */}
-        <section id="features" className="mt-32 px-4 max-w-5xl mx-auto">
-          <div className="text-center mb-16 relative">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#00E5FF] opacity-[0.03] blur-[50px] rounded-full -z-10" />
-            <p className="text-xs font-bold text-[#00E5FF] uppercase tracking-widest mb-4 inline-flex items-center gap-2">
-              <span className="w-8 h-px bg-gradient-to-r from-transparent to-[#00E5FF]" />
-              Core Engine
-              <span className="w-8 h-px bg-gradient-to-l from-transparent to-[#00E5FF]" />
+        {/* ── BENTO GRID FEATURES ─────────────────────────────────────────── */}
+        <section id="features" className="mt-40 px-6 max-w-[1200px] mx-auto">
+          <div className="mb-16">
+            <h2 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-white mb-4">
+              Built for engineering scale.
+            </h2>
+            <p className="text-[#86a898] text-lg max-w-xl font-medium">
+              Everything you need to secure and optimize your codebase in real-time, packed into a single, cohesive platform.
             </p>
-            <h2 className="text-4xl font-display font-bold tracking-tight text-[#F0FFF4]">
-              Everything you need to ship faster.
-            </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                Icon: Robot,
-                color: "text-[#39FF7F]",
-                bg: "bg-[rgba(57,255,127,0.1)]",
-                num: "01",
-                title: "Inline Editing",
-                desc: "No more context switching. The agent writes code directly into your active file."
-              },
-              {
-                Icon: ShieldCheck,
-                color: "text-[#00C853]",
-                bg: "bg-[rgba(0,200,83,0.1)]",
-                num: "02",
-                title: "OWASP Sec-Scans",
-                desc: "Enterprise-grade vulnerability detection built into the core AI analysis pipeline."
-              },
-              {
-                Icon: ChartBar,
-                color: "text-[#005C2E]",
-                bg: "bg-[rgba(0,92,46,0.2)]",
-                num: "03",
-                title: "Algorithmic Audits",
-                desc: "The agent autonomously detects complex nested loops and rewrites them for O(1) time complexity."
-              },
-            ].map(({ Icon, color, bg, num, title, desc }) => (
-              <div key={title} className="glass-card p-8 rounded-2xl group hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,200,83,0.1)] transition-all duration-300 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[rgba(0,200,83,0.1)] to-transparent rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-[#005C2E] via-[#00C853] to-[#39FF7F] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
-
-                <div className="flex justify-between items-start mb-6">
-                  <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center border border-[rgba(0,200,83,0.2)]`}>
-                    <Icon size={24} weight="duotone" className={`${color}`} />
-                  </div>
-                  <span className="font-display font-bold text-2xl text-[rgba(255,255,255,0.05)]">{num}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[340px]">
+            {/* Bento Item 1: Large (Span 2) */}
+            <div className="md:col-span-2 rounded-[24px] bg-[#050507] border border-[#FFFFFF]/5 overflow-hidden group relative flex flex-col md:flex-row hover:border-[#00E5FF]/20 transition-colors duration-500">
+              <div className="absolute inset-0 bg-gradient-to-br from-[rgba(0,229,255,0.03)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="p-10 flex flex-col justify-center flex-1 relative z-10 w-full md:w-1/2">
+                <div className="w-12 h-12 rounded-xl bg-[#00E5FF]/10 border border-[#00E5FF]/20 flex items-center justify-center mb-6">
+                  <Robot size={24} weight="duotone" className="text-[#00E5FF]" />
                 </div>
-
-                <h3 className="text-xl font-display font-bold text-[#F0FFF4] mb-3 group-hover:text-[#39FF7F] transition-colors">{title}</h3>
-                <p className="text-sm font-medium text-[#86a898] leading-relaxed">{desc}</p>
+                <h3 className="text-2xl font-display font-bold text-white mb-3">Multi-Agent Architecture</h3>
+                <p className="text-[#86a898] text-sm leading-relaxed font- মাঝারি">
+                  Loom AI doesn't just use one LLM. It deploys a swarm of specialized agents—auditors, optimizers, and reviewers—to analyze your code in parallel for unprecedented accuracy.
+                </p>
               </div>
-            ))}
+              <div className="w-full md:w-1/2 relative bg-[#000000] border-l border-[#FFFFFF]/5 overflow-hidden flex items-center justify-center">
+                {/* Visual Representation */}
+                <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')]" />
+                <div className="flex gap-4 p-4">
+                  <div className="w-16 h-16 rounded-2xl bg-[#000000] border border-[#f85149]/30 flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(248,81,73,0.1)]">
+                    <ShieldCheck size={20} className="text-[#f85149]" /> <span className="text-[9px] text-[#f85149] font-bold">SECURITY</span>
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-[#000000] border border-[#00C853]/30 flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(0,200,83,0.1)] -translate-y-4">
+                    <ChartBar size={20} className="text-[#00C853]" /> <span className="text-[9px] text-[#00C853] font-bold">PERF</span>
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-[#000000] border border-[#00E5FF]/30 flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(0,229,255,0.1)]">
+                    <CheckCircle size={20} className="text-[#00E5FF]" /> <span className="text-[9px] text-[#00E5FF] font-bold">QUALITY</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bento Item 2: Small */}
+            <div className="rounded-[24px] bg-[#050507] border border-[#FFFFFF]/5 overflow-hidden group relative flex flex-col hover:border-[#00C853]/20 transition-colors duration-500 p-8">
+              <div className="absolute inset-0 bg-gradient-to-bl from-[rgba(0,200,83,0.03)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="w-10 h-10 rounded-lg bg-[#00C853]/10 border border-[#00C853]/20 flex items-center justify-center mb-6 relative z-10">
+                <Desktop size={20} weight="duotone" className="text-[#00C853]" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-white mb-2 relative z-10">Inline Executions</h3>
+              <p className="text-[#86a898] text-sm leading-relaxed relative z-10">
+                Stop jumping between tabs. Review dynamic diffs and accept code rewrites directly inside the proprietary Loom IDE.
+              </p>
+              <div className="mt-auto relative z-10 p-3 rounded-lg bg-[#000000] border border-[rgba(0,200,83,0.2)] font-mono text-[10px] text-[#39FF7F]">
+                + function _optimized() {'{'} ... {'}'}
+              </div>
+            </div>
+
+            {/* Bento Item 3: Small */}
+            <div className="rounded-[24px] bg-[#050507] border border-[#FFFFFF]/5 overflow-hidden group relative flex flex-col hover:border-[#39FF7F]/20 transition-colors duration-500 p-8">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[rgba(57,255,127,0.03)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="w-10 h-10 rounded-lg bg-[#39FF7F]/10 border border-[#39FF7F]/20 flex items-center justify-center mb-6 relative z-10">
+                <ShieldCheck size={20} weight="duotone" className="text-[#39FF7F]" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-white mb-2 relative z-10">OWASP Hardened</h3>
+              <p className="text-[#86a898] text-sm leading-relaxed relative z-10">
+                Continuous background scanning protects against SQL injections, XSS, and hardcoded secrets as you type.
+              </p>
+            </div>
+
+            {/* Bento Item 4: Large (Span 2) */}
+            <div className="md:col-span-2 rounded-[24px] bg-[#050507] border border-[#FFFFFF]/5 overflow-hidden group relative p-10 flex flex-col hover:border-[#ffffff]/10 transition-colors duration-500">
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                <div>
+                  <h3 className="text-2xl font-display font-bold text-white mb-2">Exportable Audit Trails</h3>
+                  <p className="text-[#86a898] text-sm w-2/3 leading-relaxed">
+                    Loom AI automatically generates comprehensive markdown and PDF reports of every codebase scan, ready for SOC2 compliance.
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-[#ffffff]/5 border border-[#ffffff]/10 flex items-center justify-center">
+                  <FileArchive size={24} className="text-white" />
+                </div>
+              </div>
+              {/* Visual Mockup of Report */}
+              <div className="flex-1 mt-auto bg-[#000000] rounded-xl border border-[#FFFFFF]/10 p-4 relative overflow-hidden flex items-end">
+                <div className="absolute top-0 left-0 w-full h-8 bg-[#111] border-b border-[#FFFFFF]/10 flex items-center px-3 gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div><div className="w-2 h-2 rounded-full bg-yellow-500"></div><div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span className="text-[9px] font-mono text-zinc-500 ml-2">LOOM_AUDIT_REPORT.pdf</span>
+                </div>
+                <div className="w-full h-full pt-6 flex gap-4 opacity-70">
+                  <div className="w-1/3 bg-zinc-900 rounded border border-zinc-800 h-full p-2 space-y-2">
+                    <div className="w-full h-2 bg-zinc-800 rounded"></div>
+                    <div className="w-2/3 h-2 bg-zinc-800 rounded"></div>
+                  </div>
+                  <div className="w-2/3 bg-zinc-900 rounded border border-zinc-800 h-full p-3 flex flex-col gap-3">
+                    <div className="w-1/2 h-4 bg-[#00E5FF]/20 rounded"></div>
+                    <div className="w-full h-2 bg-zinc-800 rounded"></div>
+                    <div className="w-4/5 h-2 bg-zinc-800 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ── FEATURE DEEP-DIVE (alternating) ──────────────────────────────── */}
-        <section className="mt-32 max-w-6xl mx-auto px-4 space-y-32">
-          {features.map((f, idx) => (
-            <motion.div
-              key={f.id}
-              initial={{ opacity: 0, y: 32 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.25 }}
-              transition={{ duration: 0.55, ease: "easeOut" }}
-              className={`grid lg:grid-cols-2 gap-12 items-center ${f.reverse ? "lg:flex-row-reverse" : ""}`}
-            >
-              {/* Text side */}
-              <div className={f.reverse ? "lg:order-2" : ""}>
-                <span className={`inline-block text-[10px] font-display font-bold uppercase tracking-widest px-3 py-1.5 rounded border ${f.badgeCls} mb-6`}>
-                  {f.badge}
-                </span>
-                <h3 className="text-3xl md:text-4xl font-display font-bold tracking-tight text-[#F0FFF4] leading-snug mb-5">
-                  {f.title}
-                </h3>
-                <p className="text-base text-[var(--text-secondary)] font-medium leading-relaxed mb-8">
-                  {f.description}
-                </p>
-                <ul className="space-y-3 mb-8">
-                  {f.bullets.map(b => (
-                    <li key={b} className="flex items-start gap-3 text-sm font-medium text-[var(--text-primary)]">
-                      <CheckCircle size={18} weight="fill" className="text-[var(--brand)] mt-0.5 shrink-0" />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/app" className={`inline-flex items-center gap-1.5 text-sm font-bold ${f.accent} hover:underline underline-offset-4`}>
-                  Try it out in the editor <ArrowUpRight size={14} weight="bold" />
-                </Link>
-              </div>
-
-              {/* Mockup side */}
-              <div className={`${f.reverse ? "lg:order-1" : ""} relative`}>
-                <div className="absolute -inset-4 bg-gradient-to-br from-[var(--surface-raised)] to-[var(--background)] rounded-2xl -z-10" />
-                {f.mockup}
-              </div>
-            </motion.div>
-          ))}
-        </section>
-
-        {/* ── CTA BANNER ────────────────────────────────────────────────────── */}
-        <section className="mt-40 mb-20 px-4 max-w-5xl mx-auto">
-          <div className="rounded-[2.5rem] py-20 px-8 md:px-16 text-center shadow-[0_20px_60px_rgba(0,200,83,0.15)] border border-[rgba(0,200,83,0.2)] relative overflow-hidden bg-[#0a0a0f]">
+        {/* ── HIGH IMPACT CTA ────────────────────────────────────────────────── */}
+        <section className="mt-40 mb-10 px-6 max-w-[1200px] mx-auto">
+          <div className="rounded-[32px] py-24 px-8 md:px-16 text-center shadow-[0_20px_80px_rgba(0,229,255,0.1)] border border-[#FFFFFF]/10 relative overflow-hidden bg-[#050507]">
             {/* Mesh gradient backgrounds */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00C853] mix-blend-screen filter blur-[100px] opacity-20 translate-x-1/3 -translate-y-1/3 pointer-events-none rounded-full" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#39FF7F] mix-blend-screen filter blur-[120px] opacity-10 -translate-x-1/3 translate-y-1/3 pointer-events-none rounded-full" />
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20" />
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#00E5FF] mix-blend-screen filter blur-[150px] opacity-[0.15] translate-x-1/3 -translate-y-1/3 pointer-events-none rounded-full" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#00C853] mix-blend-screen filter blur-[150px] opacity-[0.15] -translate-x-1/3 translate-y-1/3 pointer-events-none rounded-full" />
 
-            <h2 className="text-4xl md:text-5xl font-display font-black text-[#F0FFF4] tracking-tight mb-6 relative z-10 leading-tight">
-              Ready to code with <br className="hidden md:block" />
-              <span className="text-gradient-green">zero technical debt?</span>
+            <div className="w-16 h-16 rounded-2xl bg-[#000000] border border-[#ffffff]/10 mx-auto flex items-center justify-center mb-8 relative z-10 shadow-[0_0_30px_rgba(0,229,255,0.2)]">
+              <LoomLogo size={32} />
+            </div>
+
+            <h2 className="text-4xl md:text-6xl font-display font-black text-white tracking-tighter mb-6 relative z-10 leading-[1.1]">
+              Ready to eradicate <br className="hidden md:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00E5FF] to-[#00C853]">technical debt?</span>
             </h2>
-            <p className="text-lg font-medium text-[#86a898] mb-12 max-w-2xl mx-auto leading-relaxed relative z-10">
-              Join leading tech teams standardizing their codebase security and performance with CodeRefine AI.
+            <p className="text-[17px] font-medium text-[#86a898] mb-12 max-w-xl mx-auto leading-relaxed relative z-10">
+              Start securing and optimizing your enterprise codebase in seconds. Free for individual developers.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4 relative z-10">
               <Link href="/app" className="w-full sm:w-auto">
-                <button className="w-full h-14 px-10 rounded-2xl text-base font-bold bg-gradient-to-r from-[#00C853] to-[#00E5FF] text-[#000000] hover:brightness-110 shadow-[0_0_30px_rgba(0,229,255,0.4)] transition-all flex items-center justify-center gap-2">
-                  Test the Sandbox <ArrowRight size={18} weight="bold" />
+                <button className="w-full h-14 px-10 rounded-2xl text-[15px] font-bold bg-[#FFFFFF] text-[#000000] hover:scale-[1.02] shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all flex items-center justify-center gap-2">
+                  Start Coding <ArrowRight size={18} weight="bold" />
                 </button>
               </Link>
             </div>
@@ -363,12 +298,10 @@ export default function LandingPage() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="bg-[#000000] border-t border-[rgba(0,229,255,0.15)] py-12 px-4">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="text-xl font-display font-bold tracking-tight text-[#F0FFF4]">
-              CodeRefine<span className="text-[#00E5FF]">.</span>
-            </span>
-            <span className="text-xs font-medium text-[#4d6b5a] border-l border-[rgba(0,200,83,0.2)] pl-4">
-              Built during a 48-Hour Hackathon
+          <div className="flex items-center gap-6">
+            <LoomLogo size={48} showText={true} />
+            <span className="text-xs font-medium text-[#4d6b5a] border-l border-[rgba(0,200,83,0.2)] pl-6">
+              Built with Loom AI Enterprise
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-bold text-[#86a898]">
@@ -379,7 +312,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-[rgba(0,200,83,0.1)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-medium text-[#4d6b5a]">
-          <p>© {new Date().getFullYear()} CodeRefine. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Loom AI. All rights reserved.</p>
           <div className="flex items-center gap-5">
             <Link href="#" className="hover:text-[#86a898] transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-[#86a898] transition-colors">Terms of Service</Link>

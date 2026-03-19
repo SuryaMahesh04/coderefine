@@ -19,8 +19,9 @@ export async function analyzeCode(code: string, userMessage: string, context?: {
     }
 
     // Step 1: Get Insights, Plan, and Chat Response from Pro Model
+    const systemPrompt = "You are Loom AI (Morph), a senior AI engineer.";
     const proPrompt = `
-You are CodeRefine (Morph), a senior AI engineer.
+${systemPrompt}
 Analyze the user's request and the code.
 
 USER MESSAGE: "${userMessage}"
